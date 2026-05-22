@@ -21,3 +21,14 @@ npm-debug.log*
 .DS_Store
 *.pem
 .vercel
+
+# Archivos internos y sensibles
+*.sql
+SESSION.md
+handoff.md
+AGENTS.md
+CLAUDE.md
+SPEC-CC-*.md
+check_db*.js
+check_tables.mjs
+convert_sql.js
