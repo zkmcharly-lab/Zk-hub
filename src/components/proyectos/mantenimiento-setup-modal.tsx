@@ -24,6 +24,7 @@ export function MantenimientoSetupModal({ isOpen, onClose, proyecto }: Mantenimi
 
   const [monto, setMonto] = useState<number | ''>('')
   const [moneda, setMoneda] = useState('USD')
+  const [numCuotas, setNumCuotas] = useState(12)
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
   const [metodo, setMetodo] = useState('transferencia')
   const [notas, setNotas] = useState('')
@@ -45,9 +46,9 @@ export function MantenimientoSetupModal({ isOpen, onClose, proyecto }: Mantenimi
         contact_id: proyecto.contact_id,
         deal_id: proyecto.deal_id,
         tipo: 'mantenimiento',
-        monto_total: monto,
+        monto_total: Number(monto),
         moneda: moneda,
-        num_pagos: 12,
+        num_pagos: numCuotas,
         metodo_pago: metodo,
         fecha_primer_pago: fecha,
         frecuencia: 'mensual',
@@ -60,7 +61,7 @@ export function MantenimientoSetupModal({ isOpen, onClose, proyecto }: Mantenimi
       if (data) {
         const fechaBase = fecha ? new Date(fecha) : new Date()
         const montoTotal = Number(monto) || 0
-        const nPagos = 12
+        const nPagos = numCuotas
         const pagosRows = []
         for (let i = 0; i < nPagos; i++) {
           const f = new Date(fechaBase)
@@ -69,7 +70,7 @@ export function MantenimientoSetupModal({ isOpen, onClose, proyecto }: Mantenimi
             cobro_id: data.id,
             numero_pago: i + 1,
             fecha_vencimiento: f.toISOString().split('T')[0],
-            monto: montoTotal, // Mantenimiento es mensual, así que cada cuota es del mismo monto
+            monto: montoTotal,
             estado: 'pendiente'
           })
         }
@@ -79,9 +80,10 @@ export function MantenimientoSetupModal({ isOpen, onClose, proyecto }: Mantenimi
 
       await queryClient.invalidateQueries({ queryKey: ['cobros', workspace.id] })
       onClose()
-    } catch (err) {
-      console.error(err)
-      alert('Error al crear el mantenimiento')
+    } catch (err: any) {
+      console.error('Error completo:', err)
+      console.error('Mensaje:', err?.message)
+      alert('Error: ' + (err?.message ?? JSON.stringify(err)))
     } finally {
       setIsSubmitting(false)
     }
@@ -160,6 +162,21 @@ export function MantenimientoSetupModal({ isOpen, onClose, proyecto }: Mantenimi
                 className="w-full rounded-[8px] border border-gray-200 px-3 py-2 text-[14px] outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all" 
               />
             </div>
+          </div>
+          
+          <div>
+            <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Número de cuotas</label>
+            <input 
+              type="number" 
+              min={1} 
+              max={36}
+              value={numCuotas}
+              onChange={e => setNumCuotas(parseInt(e.target.value) || 12)}
+              className="w-full rounded-[8px] border border-gray-200 px-3 py-2 text-[14px] outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all" 
+            />
+            <p style={{fontSize:11, color:'#9ca3af', marginTop:4}}>
+              Por defecto 12 meses (1 año)
+            </p>
           </div>
           
           <div>

@@ -3,6 +3,8 @@ import { useContact, useCreateContact, useUpdateContact } from '@/hooks/use-cont
 import { useContactFolders } from '@/hooks/use-contact-folders'
 import { X, MapPin, Globe, Phone, Building2, Loader2 } from 'lucide-react'
 import { COUNTRY_LIST, getRegions, getRegionLabel } from '@/utils/locations'
+import { createClient } from '@/lib/supabase/client'
+import { useWorkspaceStore } from '@/lib/store'
 
 const SECTORES = [
   'Inmobiliaria',
@@ -58,6 +60,8 @@ export function ContactFormModal({ isOpen, onClose, contactId, onCreated }: Cont
   const { data: folders } = useContactFolders()
   const createContact = useCreateContact()
   const updateContact = useUpdateContact()
+  const { workspace } = useWorkspaceStore()
+  const supabase = createClient()
 
   const [form, setForm] = useState({
     nombre: '', email: '', telefono: '', empresa: '', sitio_web: '',
@@ -70,45 +74,45 @@ export function ContactFormModal({ isOpen, onClose, contactId, onCreated }: Cont
   const [selectedNicho, setSelectedNicho] = useState('')
 
   useEffect(() => {
-    if (isOpen) {
-      if (isEditing && existingContact) {
-        setForm({
-          nombre: existingContact.nombre,
-          email: existingContact.email ?? '',
-          telefono: existingContact.telefono ?? '',
-          empresa: existingContact.empresa ?? '',
-          sitio_web: existingContact.sitio_web ?? '',
-          notas: existingContact.notas ?? '',
-          dato_relevante: existingContact.dato_relevante ?? '',
-          etiquetas: existingContact.etiquetas ?? [],
-          pais: existingContact.pais ?? '',
-          region: existingContact.region ?? '',
-          maps_url: existingContact.maps_url ?? '',
-          facebook_url: existingContact.facebook_url ?? '',
-          instagram_url: existingContact.instagram_url ?? '',
-          temperatura: existingContact.temperatura ?? 'frio',
-          nicho: existingContact.nicho ?? '',
-          preferred_currency: existingContact.preferred_currency ?? 'USD',
-          folder_id: existingContact.folder_id ?? '',
-        })
-        
-        const initialNicho = existingContact.nicho ?? ''
-        if (initialNicho && !SECTORES.includes(initialNicho) && initialNicho !== 'Otro') {
-          setSelectedNicho('Otro')
-        } else {
-          setSelectedNicho(initialNicho)
-        }
-      } else if (!isEditing) {
-        setForm({
-          nombre: '', email: '', telefono: '', empresa: '', sitio_web: '',
-          notas: '', dato_relevante: '', etiquetas: [],
-          pais: '', region: '', maps_url: '', facebook_url: '', instagram_url: '',
-          temperatura: 'frio', nicho: '', preferred_currency: 'USD', folder_id: '',
-        })
-        setSelectedNicho('')
+    if (isOpen && existingContact) {
+      setForm({
+        nombre: existingContact.nombre ?? '',
+        email: existingContact.email ?? '',
+        telefono: existingContact.telefono ?? '',
+        empresa: existingContact.empresa ?? '',
+        sitio_web: existingContact.sitio_web ?? '',
+        notas: existingContact.notas ?? '',
+        dato_relevante: existingContact.dato_relevante ?? '',
+        etiquetas: existingContact.etiquetas ?? [],
+        pais: existingContact.pais ?? '',
+        region: existingContact.region ?? '',
+        maps_url: existingContact.maps_url ?? '',
+        facebook_url: existingContact.facebook_url ?? '',
+        instagram_url: existingContact.instagram_url ?? '',
+        temperatura: existingContact.temperatura ?? 'frio',
+        nicho: existingContact.nicho ?? '',
+        preferred_currency: existingContact.preferred_currency ?? 'USD',
+        folder_id: existingContact.folder_id ?? '',
+      })
+      
+      const initialNicho = existingContact.nicho ?? ''
+      if (initialNicho && !SECTORES.includes(initialNicho) && initialNicho !== 'Otro') {
+        setSelectedNicho('Otro')
+      } else {
+        setSelectedNicho(initialNicho)
       }
     }
-  }, [isOpen, isEditing, existingContact])
+    
+    if (isOpen && !existingContact && !isEditing) {
+      setForm({
+        nombre: '', email: '', telefono: '', empresa: '', sitio_web: '',
+        notas: '', dato_relevante: '', etiquetas: [],
+        pais: '', region: '', maps_url: '', facebook_url: '', instagram_url: '',
+        temperatura: 'frio', nicho: '', preferred_currency: 'USD', folder_id: '',
+      })
+      setSelectedNicho('')
+    }
+  }, [isOpen, existingContact, isEditing])
 
   if (!isOpen) return null
 
@@ -116,9 +120,41 @@ export function ContactFormModal({ isOpen, onClose, contactId, onCreated }: Cont
   const regions = getRegions(form.pais)
   const regionLabel = getRegionLabel(form.pais)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.nombre.trim()) return alert('El nombre es requerido')
+
+    let finalFolderId = form.folder_id || null
+    if (form.nicho && !finalFolderId && workspace?.id) {
+      const assignFolder = async (nicho: string) => {
+        const { data: existing } = await supabase
+          .from('contact_folders')
+          .select('id')
+          .eq('workspace_id', workspace.id)
+          .eq('nombre', nicho)
+          .single()
+        
+        if (existing) return existing.id
+        
+        const { data: nueva } = await supabase
+          .from('contact_folders')
+          .insert({
+            workspace_id: workspace.id,
+            nombre: nicho,
+            color: '#6b7280',
+            order_index: 0
+          })
+          .select('id')
+          .single()
+        
+        return nueva?.id
+      }
+      
+      const newFolderId = await assignFolder(form.nicho)
+      if (newFolderId) {
+        finalFolderId = newFolderId
+      }
+    }
 
     const dataToSave = {
       ...form,
@@ -135,7 +171,7 @@ export function ContactFormModal({ isOpen, onClose, contactId, onCreated }: Cont
       instagram_url: form.instagram_url || null,
       nicho: form.nicho || null,
       preferred_currency: form.preferred_currency || 'USD',
-      folder_id: form.folder_id || null,
+      folder_id: finalFolderId,
     }
 
     if (isEditing) {

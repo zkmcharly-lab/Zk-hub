@@ -34,6 +34,7 @@ export function CobroPanel({ cobro, onClose }: { cobro: any; onClose: () => void
   const [editMode, setEditMode] = useState(false)
   const [pagos, setPagos] = useState<any[]>([])
   const [loadingPagos, setLoadingPagos] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const [form, setForm] = useState({
     num_pagos: cobro.num_pagos,
@@ -64,19 +65,49 @@ export function CobroPanel({ cobro, onClose }: { cobro: any; onClose: () => void
     loadPagos()
   }, [loadPagos])
 
-  const handleSave = () => {
-    updateCobro.mutate({
-      id: cobro.id,
-      data: {
-        ...form,
-        fecha_primer_pago: form.fecha_primer_pago || null,
+  const handleSave = async () => {
+    setIsSaving(true)
+    try {
+      await supabase
+        .from('cobros')
+        .update({
+          num_pagos: form.num_pagos,
+          fecha_primer_pago: form.fecha_primer_pago || null,
+          metodo_pago: form.metodo_pago,
+          frecuencia: form.frecuencia,
+          notas: form.notas
+        })
+        .eq('id', cobro.id)
+
+      await supabase
+        .from('cobro_pagos')
+        .delete()
+        .eq('cobro_id', cobro.id)
+
+      const cuotas = []
+      const baseDateStr = form.fecha_primer_pago || new Date().toISOString().split('T')[0]
+      for (let i = 0; i < form.num_pagos; i++) {
+        const fecha = new Date(baseDateStr)
+        fecha.setMonth(fecha.getMonth() + i)
+        cuotas.push({
+          cobro_id: cobro.id,
+          numero_pago: i + 1,
+          fecha_vencimiento: fecha.toISOString().split('T')[0],
+          monto: cobro.monto_total / form.num_pagos,
+          estado: 'pendiente'
+        })
       }
-    }, {
-      onSuccess: () => {
-        setEditMode(false)
-        loadPagos()
-      }
-    })
+      await supabase.from('cobro_pagos').insert(cuotas)
+
+      await queryClient.invalidateQueries({ queryKey: ['cobros', workspace?.id] })
+      setEditMode(false)
+      loadPagos()
+    } catch (err) {
+      console.error(err)
+      alert('Error al guardar configuración del cobro')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const markPago = async (pagoId: string, nuevoEstado: string) => {
@@ -214,8 +245,8 @@ export function CobroPanel({ cobro, onClose }: { cobro: any; onClose: () => void
                 <label style={labelStyle}>Notas</label>
                 <textarea value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} rows={2} placeholder="Observaciones del cobro..." style={{ ...inputStyle, resize: 'none', height: 'auto' }} />
               </div>
-              <button onClick={handleSave} disabled={updateCobro.isPending} style={{ background: '#0ea5e9', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontWeight: 700, fontSize: 14, cursor: 'pointer', opacity: updateCobro.isPending ? 0.6 : 1 }}>
-                {updateCobro.isPending ? 'Guardando…' : 'Guardar y regenerar pagos'}
+              <button onClick={handleSave} disabled={isSaving} style={{ background: '#0ea5e9', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontWeight: 700, fontSize: 14, cursor: 'pointer', opacity: isSaving ? 0.6 : 1 }}>
+                {isSaving ? 'Guardando…' : 'Guardar y regenerar pagos'}
               </button>
             </div>
           )}
@@ -253,7 +284,7 @@ export function CobroPanel({ cobro, onClose }: { cobro: any; onClose: () => void
                         {formatCurrency(pago.monto, cobro.moneda)}
                       </div>
                       {pago.estado !== 'pagado' ? (
-                        <button onClick={() => markPago(pago.id, 'pagado')} title="Marcar como pagado" style={{ width: 28, height: 28, borderRadius: '50%', border: '1.5px solid #10b981', background: '#f0fdf4', color: '#10b981', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <button onClick={() => markPago(pago.id, 'pagado')} title="Marcar como pagado" style={{ width: 28, height: 28, borderRadius: '50%', border: '1.5px solid var(--zk-border)', background: 'var(--zk-bg-surface)', color: 'var(--zk-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Check size={13} />
                         </button>
                       ) : (

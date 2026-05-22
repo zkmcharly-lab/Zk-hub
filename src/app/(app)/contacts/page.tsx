@@ -21,6 +21,7 @@ export default function ContactsPage() {
   const [tempFilter, setTempFilter] = useState<string | null>(null)
   const [folderFilter, setFolderFilter] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingContactId, setEditingContactId] = useState<string | undefined>(undefined)
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false)
   const [selectedContact, setSelectedContact] = useState<any | null>(null)
   
@@ -230,7 +231,7 @@ export default function ContactsPage() {
             backgroundColor: '#E8193C', color: '#fff', border: 'none', borderRadius: 8,
             fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
           }}
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => { setEditingContactId(undefined); setIsModalOpen(true) }}
           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#C8102E'}
           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#E8193C'}
         >
@@ -325,11 +326,11 @@ export default function ContactsPage() {
         <ContactPanel 
           contactId={selectedContact.id} 
           onClose={() => setSelectedContact(null)} 
-          onEdit={(id) => { setIsModalOpen(true); /* Handle edit if needed */ }} 
+          onEdit={(id) => { setEditingContactId(id); setIsModalOpen(true); }} 
           onAddDeal={(id) => { /* TODO handle deal */ }} 
         />
       )}
-      <ContactFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <ContactFormModal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingContactId(undefined); }} contactId={editingContactId} />
       <CreateFolderModal isOpen={isFolderModalOpen} onClose={() => setIsFolderModalOpen(false)} />
     </div>
   )

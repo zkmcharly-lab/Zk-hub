@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useProyecto, useAvanzarFase, useUpdateTarea, useCreateTarea, useUpdateProyecto } from '@/hooks/use-proyectos'
-import { ArrowLeft, CheckCircle2, Circle, Loader2, PlayCircle, Plus, Calendar, Save } from 'lucide-react'
+import { useProyecto, useAvanzarFase, useUpdateTarea, useCreateTarea, useUpdateProyecto, useDeleteProyecto } from '@/hooks/use-proyectos'
+import { ArrowLeft, CheckCircle2, Circle, Loader2, PlayCircle, Plus, Calendar, Save, Trash2 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { MantenimientoSetupModal } from '@/components/proyectos/mantenimiento-setup-modal'
 import { ProjectEditModal } from '@/components/proyectos/project-edit-modal'
@@ -25,6 +25,7 @@ export default function ProyectoDetailPage() {
   const updateTarea = useUpdateTarea()
   const createTarea = useCreateTarea()
   const updateProyecto = useUpdateProyecto()
+  const deleteProyecto = useDeleteProyecto()
 
   const [mantenimientoModalOpen, setMantenimientoModalOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -124,6 +125,20 @@ export default function ProyectoDetailPage() {
         </div>
         <div className="ml-auto flex items-center gap-3">
           <button 
+            onClick={() => {
+              if (confirm('¿Eliminar este proyecto? Esta acción no se puede deshacer.')) {
+                deleteProyecto.mutate(proyecto.id, {
+                  onSuccess: () => router.push('/proyectos')
+                })
+              }
+            }}
+            disabled={deleteProyecto.isPending}
+            className="rounded-[8px] bg-red-50 px-3 py-1.5 text-[12px] font-bold text-red-600 hover:bg-red-100 transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {deleteProyecto.isPending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            Eliminar
+          </button>
+          <button 
             onClick={() => setIsEditOpen(true)}
             className="rounded-[8px] border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
           >
@@ -215,55 +230,53 @@ export default function ProyectoDetailPage() {
                           </div>
                         )}
                         
-                        {isCurrent && (
-                          <div className="mt-3">
-                            {faseCreandoTarea === fase.id ? (
-                              <div className="rounded-[8px] bg-white border border-[#E8193C]/20 shadow-sm p-3 space-y-3">
-                                <input 
-                                  autoFocus
-                                  type="text" 
-                                  placeholder="Descripción de la tarea..." 
-                                  className="w-full text-[13px] bg-transparent border-b border-gray-200 pb-1.5 focus:outline-none focus:border-[#E8193C] transition-colors"
-                                  value={nuevaTarea.descripcion}
-                                  onChange={e => setNuevaTarea(prev => ({ ...prev, descripcion: e.target.value }))}
-                                  onKeyDown={e => {
-                                    if(e.key === 'Enter') handleCreateTarea(fase.id)
-                                    if(e.key === 'Escape') setFaseCreandoTarea(null)
-                                  }}
-                                />
-                                <div className="flex items-center justify-between gap-2">
-                                  <select 
-                                    className="text-[12px] bg-gray-50 border border-gray-200 text-gray-700 rounded px-2 py-1.5 focus:outline-none cursor-pointer"
-                                    value={nuevaTarea.responsable}
-                                    onChange={e => setNuevaTarea(prev => ({ ...prev, responsable: e.target.value }))}
+                        <div className="mt-3">
+                          {faseCreandoTarea === fase.id ? (
+                            <div className="rounded-[8px] bg-white border border-[#E8193C]/20 shadow-sm p-3 space-y-3">
+                              <input 
+                                autoFocus
+                                type="text" 
+                                placeholder="Descripción de la tarea..." 
+                                className="w-full text-[13px] bg-transparent border-b border-gray-200 pb-1.5 focus:outline-none focus:border-[#E8193C] transition-colors"
+                                value={nuevaTarea.descripcion}
+                                onChange={e => setNuevaTarea(prev => ({ ...prev, descripcion: e.target.value }))}
+                                onKeyDown={e => {
+                                  if(e.key === 'Enter') handleCreateTarea(fase.id)
+                                  if(e.key === 'Escape') setFaseCreandoTarea(null)
+                                }}
+                              />
+                              <div className="flex items-center justify-between gap-2">
+                                <select 
+                                  className="text-[12px] bg-gray-50 border border-gray-200 text-gray-700 rounded px-2 py-1.5 focus:outline-none cursor-pointer"
+                                  value={nuevaTarea.responsable}
+                                  onChange={e => setNuevaTarea(prev => ({ ...prev, responsable: e.target.value }))}
+                                >
+                                  <option value="global">Sin asignar</option>
+                                  <option value="charly">Charly</option>
+                                  <option value="inma">Inma</option>
+                                  <option value="fabri">Fabri</option>
+                                </select>
+                                <div className="flex gap-2 items-center">
+                                  <button onClick={() => setFaseCreandoTarea(null)} className="text-[12px] text-gray-500 hover:text-gray-700 font-medium px-2">Cancelar</button>
+                                  <button 
+                                    onClick={() => handleCreateTarea(fase.id)}
+                                    disabled={createTarea.isPending || !nuevaTarea.descripcion.trim()}
+                                    className="text-[12px] bg-[#E8193C] text-white px-3 py-1.5 rounded-[6px] font-bold hover:bg-[#C8102E] disabled:opacity-50 transition-colors shadow-sm"
                                   >
-                                    <option value="global">Cualquiera (Global)</option>
-                                    <option value="charly">Charly</option>
-                                    <option value="inma">Inma</option>
-                                    <option value="fabri">Fabri</option>
-                                  </select>
-                                  <div className="flex gap-2 items-center">
-                                    <button onClick={() => setFaseCreandoTarea(null)} className="text-[12px] text-gray-500 hover:text-gray-700 font-medium px-2">Cancelar</button>
-                                    <button 
-                                      onClick={() => handleCreateTarea(fase.id)}
-                                      disabled={createTarea.isPending || !nuevaTarea.descripcion.trim()}
-                                      className="text-[12px] bg-[#E8193C] text-white px-3 py-1.5 rounded-[6px] font-bold hover:bg-[#C8102E] disabled:opacity-50 transition-colors shadow-sm"
-                                    >
-                                      {createTarea.isPending ? 'Guardando...' : 'Guardar tarea'}
-                                    </button>
-                                  </div>
+                                    {createTarea.isPending ? 'Guardando...' : 'Guardar tarea'}
+                                  </button>
                                 </div>
                               </div>
-                            ) : (
-                              <button onClick={() => {
-                                setFaseCreandoTarea(fase.id)
-                                setNuevaTarea({ descripcion: '', responsable: 'global' })
-                              }} className="text-[12px] font-bold text-[#E8193C] hover:text-[#C8102E] flex items-center gap-1.5 px-1 py-0.5 rounded transition-colors hover:bg-red-50">
-                                <Plus size={14} /> Añadir nueva tarea
-                              </button>
-                            )}
-                          </div>
-                        )}
+                            </div>
+                          ) : (
+                            <button onClick={() => {
+                              setFaseCreandoTarea(fase.id)
+                              setNuevaTarea({ descripcion: '', responsable: 'global' })
+                            }} className="text-[12px] font-bold text-[#E8193C] hover:text-[#C8102E] flex items-center gap-1.5 px-1 py-0.5 rounded transition-colors hover:bg-red-50">
+                              <Plus size={14} /> Añadir nueva tarea
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )

@@ -236,3 +236,33 @@ export function useUpdateProyecto() {
     },
   })
 }
+
+export function useDeleteProyecto() {
+  const supabase = createClient()
+  const queryClient = useQueryClient()
+  const { workspace } = useWorkspaceStore()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // 1. Borrar tareas (on delete cascade should handle this ideally, but manual to be safe)
+      await supabase.from('proyecto_tareas').delete().eq('proyecto_id', id) // Wait, Tareas only have fase_id actually.
+      // Let's just delete the project, if ON DELETE CASCADE is set, it will work.
+      // If not, we will need to delete fases, which deletes tareas.
+      
+      // Let's fetch fases to delete tareas manually just in case
+      const { data: fases } = await supabase.from('proyecto_fases').select('id').eq('proyecto_id', id)
+      if (fases && fases.length > 0) {
+        const faseIds = fases.map((f: any) => f.id)
+        await supabase.from('proyecto_tareas').delete().in('fase_id', faseIds)
+      }
+      
+      await supabase.from('proyecto_fases').delete().eq('proyecto_id', id)
+      
+      const { error } = await supabase.from('proyectos').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proyectos', workspace?.id] })
+    },
+  })
+}

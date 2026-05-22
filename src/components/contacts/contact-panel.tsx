@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { useContact, useUpdateContact } from '@/hooks/use-contacts'
+import { useContact, useUpdateContact, useDeleteContact } from '@/hooks/use-contacts'
 import { useContactNotes, useAddContactNote, useDeleteContactNote } from '@/hooks/use-contact-notes'
 import { useReminders, useCreateReminder, useUpdateReminder, useDeleteReminder } from '@/hooks/use-reminders'
 import { useAuthStore } from '@/lib/store'
@@ -39,6 +39,7 @@ export function ContactPanel({ contactId, onClose, onEdit, onAddDeal, isNewConta
 
   const { data: contact, isLoading } = useContact(contactId)
   const updateContact = useUpdateContact()
+  const deleteContact = useDeleteContact()
   
   const { data: notes, isLoading: notesLoading } = useContactNotes(contactId)
   const addNote = useAddContactNote(contactId)
@@ -443,6 +444,26 @@ export function ContactPanel({ contactId, onClose, onEdit, onAddDeal, isNewConta
               )}
             </section>
 
+          </div>
+
+          {/* Footer */}
+          <div style={{ padding: '16px 20px', borderTop: '1px solid #e5e7eb', backgroundColor: '#ffffff', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+            <button 
+              onClick={() => {
+                if (confirm('¿Eliminar este contacto? Esta acción no se puede deshacer.')) {
+                  deleteContact.mutate(contactId, {
+                    onSuccess: () => onClose()
+                  })
+                }
+              }}
+              disabled={deleteContact.isPending}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', opacity: deleteContact.isPending ? 0.5 : 1 }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fee2e2' }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#fef2f2' }}
+            >
+              {deleteContact.isPending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+              Eliminar contacto
+            </button>
           </div>
         </div>
       </aside>
