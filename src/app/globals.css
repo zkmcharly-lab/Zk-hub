@@ -1,0 +1,600 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@plugin '@tailwindcss/typography';
+
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes wa-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.4); }
+  70%  { box-shadow: 0 0 0 12px rgba(37, 211, 102, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
+}
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-border: var(--primary-border);
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary-border: var(--secondary-border);
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted-border: var(--muted-border);
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-border: var(--accent-border);
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive-border: var(--destructive-border);
+
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
+
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-primary-border: var(--sidebar-primary-border);
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-accent-border: var(--sidebar-accent-border);
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  /* â”€â”€ ZK Brand â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  --zk-red:        #E8193C;
+  --zk-red-hover:  #C8102E;
+  --zk-red-subtle: rgba(232,25,60,0.08);
+  --zk-red-border: rgba(232,25,60,0.25);
+  --zk-red-glow:   rgba(232,25,60,0.15);
+
+  --button-outline: rgba(0,0,0,0.08);
+  --badge-outline:  rgba(0,0,0,0.04);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(0,0,0,0.04);
+  --elevate-2: rgba(0,0,0,0.08);
+
+  /* Light theme */
+  --background:              0 0% 96%;
+  --foreground:              0 0% 9%;
+
+  --card:                    0 0% 100%;
+  --card-foreground:         0 0% 9%;
+  --card-border:             0 0% 90%;
+
+  --popover:                 0 0% 100%;
+  --popover-foreground:      0 0% 9%;
+  --popover-border:          0 0% 90%;
+
+  /* ZK Red as primary â€” #E8193C = hsl(350 82% 50%) */
+  --primary: 350 82% 50%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary:               0 0% 93%;
+  --secondary-foreground:    0 0% 9%;
+
+  --muted:                   0 0% 93%;
+  --muted-foreground:        0 0% 42%;
+
+  --accent:                  0 0% 93%;
+  --accent-foreground:       0 0% 9%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border:                  0 0% 90%;
+  --input:                   0 0% 100%;
+  --ring: 350 82% 50%;
+
+  --success: 160 84% 39%;
+  --warning: 38 92% 50%;
+
+  --sidebar:                 0 0% 100%;
+  --sidebar-foreground:      0 0% 9%;
+  --sidebar-border:          0 0% 90%;
+  --sidebar-primary: 350 82% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent:          0 0% 93%;
+  --sidebar-accent-foreground: 0 0% 9%;
+  --sidebar-ring: 350 82% 50%;
+
+  --app-font-sans: 'Inter', sans-serif;
+  --app-font-serif: Georgia, serif;
+  --app-font-mono: Menlo, monospace;
+  --radius: .5rem;
+
+  --shadow-2xs: 0px 2px 0px 0px rgba(0,0,0,.2);
+  --shadow-xs:  0px 2px 0px 0px rgba(0,0,0,.2);
+  --shadow-sm:  0px 2px 0px 0px rgba(0,0,0,.2), 0px 1px 2px -1px rgba(0,0,0,.2);
+  --shadow:     0px 2px 0px 0px rgba(0,0,0,.2), 0px 1px 2px -1px rgba(0,0,0,.2);
+  --shadow-md:  0px 2px 0px 0px rgba(0,0,0,.2), 0px 2px 4px -1px rgba(0,0,0,.2);
+  --shadow-lg:  0px 2px 0px 0px rgba(0,0,0,.2), 0px 4px 6px -1px rgba(0,0,0,.2);
+  --shadow-xl:  0px 2px 0px 0px rgba(0,0,0,.2), 0px 8px 10px -1px rgba(0,0,0,.2);
+  --shadow-2xl: 0px 2px 0px 0px rgba(0,0,0,.2);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-accent-border:  hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --primary-border:         hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border:       hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --muted-border:           hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --accent-border:          hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border:     hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Sidebar width â€” set by JS on resize */
+  --sidebar-w: 240px;
+
+  /* â”€â”€ ZK Semantic Tokens (light) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  --zk-bg-page:         #f5f5f7;
+  --zk-bg-card:         #ffffff;
+  --zk-bg-elevated:     #ebebed;
+  --zk-bg-surface:      #f9f9fb;
+  --zk-bg-input:        #ffffff;
+  --zk-bg-hover:        rgba(0,0,0,0.04);
+  --zk-border:          #e5e7eb;
+  --zk-border-subtle:   #f0f0f2;
+  --zk-text-primary:    #111111;
+  --zk-text-dim:        #333333;
+  --zk-text-secondary:  #6b7280;
+  --zk-text-muted:      #9ca3af;
+  --zk-text-disabled:   #c0c0c0;
+  --zk-nav-text:        #6b7280;
+  --zk-nav-active:      #111111;
+  --zk-nav-hover:       rgba(0,0,0,0.05);
+  --zk-section-label:   #9ca3af;
+  --zk-sidebar-bg:      #ffffff;
+  --zk-sidebar-border:  #e5e7eb;
+  --zk-topbar-bg:       rgba(255,255,255,0.96);
+  --zk-topbar-border:   #e5e7eb;
+}
+
+/* Dark mode kept as no-op for component library compatibility */
+.dark {}
+
+/* â”€â”€ Shimmer skeleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--zk-bg-elevated) 0%, var(--zk-border) 50%, var(--zk-bg-elevated) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 6px;
+}
+
+/* â”€â”€ Progress bar toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+@keyframes toast-progress {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply font-sans antialiased;
+    background-color: var(--zk-bg-page);
+    color: hsl(var(--foreground));
+    overflow-x: hidden;
+  }
+}
+
+/* â”€â”€ Mobile global rules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+@media (max-width: 767px) {
+  /* Prevent zoom on input focus (iOS) */
+  input, select, textarea { font-size: 16px !important; }
+
+  /* Make dialogs/modals full-screen friendly */
+  [role="dialog"] {
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+
+  /* Table horizontal scroll on mobile */
+  .mobile-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Pipeline horizontal scroll */
+  .pipeline-scroll {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 12px;
+    padding-bottom: 8px;
+  }
+  .pipeline-scroll > * {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+    width: 85vw;
+    max-width: 340px;
+  }
+}
+
+/* â”€â”€ Reduced motion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@layer utilities {
+  input[type="search"]::-webkit-search-cancel-button { @apply hidden; }
+  [contenteditable][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+  }
+  .no-default-hover-elevate {}
+  .no-default-active-elevate {}
+  .toggle-elevate::before,
+  .toggle-elevate-2::before {
+    content: ""; pointer-events: none; position: absolute; inset: 0; border-radius: inherit; z-index: -1;
+  }
+  .toggle-elevate.toggle-elevated::before { background-color: var(--elevate-2); }
+  .border.toggle-elevate::before { inset: -1px; }
+  .hover-elevate:not(.no-default-hover-elevate),
+  .active-elevate:not(.no-default-active-elevate),
+  .hover-elevate-2:not(.no-default-hover-elevate),
+  .active-elevate-2:not(.no-default-active-elevate) { position: relative; z-index: 0; }
+  .hover-elevate:not(.no-default-hover-elevate)::after,
+  .active-elevate:not(.no-default-active-elevate)::after,
+  .hover-elevate-2:not(.no-default-hover-elevate)::after,
+  .active-elevate-2:not(.no-default-active-elevate)::after {
+    content: ""; pointer-events: none; position: absolute; inset: 0; border-radius: inherit; z-index: 999;
+  }
+  .hover-elevate:hover:not(.no-default-hover-elevate)::after,
+  .active-elevate:active:not(.no-default-active-elevate)::after { background-color: var(--elevate-1); }
+  .hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
+  .active-elevate-2:active:not(.no-default-active-elevate)::after { background-color: var(--elevate-2); }
+  .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
+  .border.active-elevate:not(.no-active-interaction-elevate)::after,
+  .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
+  .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
+  .border.hover-elevate:not(.no-hover-interaction-elevate)::after { inset: -1px; }
+}
+
+/* â”€â”€ FullCalendar Light Theme â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.zk-calendar { height: 100%; min-height: 0; }
+.zk-calendar .fc { height: 100%; font-family: inherit; color: #111111; }
+.zk-calendar .fc-theme-standard td,
+.zk-calendar .fc-theme-standard th,
+.zk-calendar .fc-theme-standard .fc-scrollgrid { border-color: #e5e7eb; }
+.zk-calendar .fc-theme-standard .fc-scrollgrid { border: none; }
+.zk-calendar .fc-col-header-cell { background: #f9f9fb; padding: 8px 0; }
+.zk-calendar .fc-col-header-cell-cushion { font-size: 12px; font-weight: 600; color: #9ca3af; text-decoration: none; text-transform: uppercase; letter-spacing: 0.06em; }
+.zk-calendar .fc-timegrid-axis { background: #f9f9fb; }
+.zk-calendar .fc-timegrid-slot { height: 36px; background: #ffffff; }
+.zk-calendar .fc-timegrid-slot-minor { border-top: 1px dashed #f0f0f2 !important; }
+.zk-calendar .fc-timegrid-slot-label { font-size: 11px; color: #9ca3af; padding: 0 10px; }
+.zk-calendar .fc-daygrid-day { background: #ffffff; }
+.zk-calendar .fc-daygrid-day:hover { background: #f9f9fb; }
+.zk-calendar .fc-daygrid-day-number { color: #6b7280; font-size: 13px; padding: 6px 10px; text-decoration: none; }
+.zk-calendar .fc-day-today { background: rgba(232,25,60,0.03) !important; }
+.zk-calendar .fc-day-today .fc-daygrid-day-number,
+.zk-calendar .fc-day-today .fc-col-header-cell-cushion { color: #E8193C !important; }
+.zk-calendar .fc-now-indicator-line { border-color: #E8193C; }
+.zk-calendar .fc-now-indicator-arrow { border-top-color: #E8193C; border-bottom-color: #E8193C; }
+.zk-calendar .fc-business-container { background: rgba(0,0,0,0.01); }
+.zk-calendar .fc-non-business { background: rgba(0,0,0,0.02); }
+.zk-calendar .fc-event { border-radius: 6px; border: none; padding: 2px 4px; cursor: pointer; transition: opacity 150ms; }
+.zk-calendar .fc-event:hover { opacity: 0.85; }
+.zk-calendar .fc-event-time { display: none; }
+.zk-calendar .fc-more-link { color: #6b7280; font-size: 11px; }
+.zk-calendar .fc-popover { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+.zk-calendar .fc-popover-header { background: #f9f9fb; color: #111111; border-bottom: 1px solid #e5e7eb; }
+.zk-calendar .fc-list-event:hover td { background: #f9f9fb !important; }
+.zk-calendar .fc-list-day-cushion { background: #f5f5f7 !important; }
+.zk-calendar .fc-list-event-title a { color: #111111; text-decoration: none; }
+.zk-calendar .fc-list-day-text,
+.zk-calendar .fc-list-day-side-text { color: #6b7280; }
+.zk-calendar .fc-timegrid-now-indicator-line { border-color: #E8193C; z-index: 10; }
+.zk-calendar .fc-highlight { background: rgba(232,25,60,0.08); }
+.zk-calendar .fc-daygrid-event-dot { border-color: #E8193C; }
+.zk-calendar .fc-scrollgrid-section-header td { border-bottom: 1px solid #e5e7eb; }
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   MOBILE FIXES
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+/* â”€â”€ WhatsApp Float â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Show tooltip only on desktop (hover-capable devices) */
+@media (hover: hover) and (pointer: fine) {
+  .wa-tooltip { display: block !important; }
+}
+
+/* On mobile: lift above bottom nav bar */
+@media (max-width: 767px) {
+  .wa-float {
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px) + 16px) !important;
+    right: 16px !important;
+  }
+  .wa-tooltip {
+    display: none !important;
+  }
+}
+
+/* â”€â”€ Dialog â†’ Mobile Bottom Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*
+ * Any <DialogContent> with the class "mobile-bottom-sheet"
+ * becomes a full-width slide-up sheet on screens < 768px.
+ * Shadcn Dialog uses fixed + translate-center positioning
+ * by default; we override all of that here.
+ */
+@media (max-width: 767px) {
+  .mobile-bottom-sheet {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92dvh !important;
+    border-radius: 20px 20px 0 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    animation: slide-up-sheet 250ms ease-out !important;
+  }
+
+  @keyframes slide-up-sheet {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+}
+
+/* â”€â”€ Form inputs â€” mobile sizing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*
+ * .form-input-mobile â€” used on Shadcn Input / SelectTrigger
+ * inside modals. 16px font prevents iOS auto-zoom.
+ */
+@media (max-width: 767px) {
+  .form-input-mobile {
+    height: 52px !important;
+    font-size: 16px !important;
+    border-radius: 10px !important;
+  }
+  /* SelectTrigger's inner span shouldn't shrink the height */
+  .form-input-mobile > span {
+    font-size: 16px !important;
+  }
+}
+
+/* â”€â”€ Contact Form Modal â€” desktop 780px two-column layout â”€â”€ */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cfm-scale-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@media (min-width: 768px) {
+  .contact-form-modal {
+    max-width: 780px !important;
+    width: 780px !important;
+    height: calc(100dvh - 48px) !important;
+    max-height: calc(100dvh - 48px) !important;
+    border-radius: 16px !important;
+    animation: cfm-scale-in 200ms ease !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  .cfm-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 16px 24px !important;
+  }
+  .cfm-full {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+.cfm-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Mobile: stacked full-width buttons in the footer */
+@media (max-width: 767px) {
+  .cfm-footer {
+    flex-direction: column-reverse !important;
+    align-items: stretch !important;
+  }
+  .cfm-footer button {
+    width: 100% !important;
+  }
+  /* Larger touch targets for inputs on mobile */
+  .cfm-grid input,
+  .cfm-grid select,
+  .cfm-grid textarea {
+    height: 52px !important;
+    font-size: 16px !important;
+  }
+  .cfm-grid textarea {
+    height: 80px !important;
+    min-height: 80px !important;
+  }
+}
+
+/* â”€â”€ Deal Form Modal â€” two-column desktop layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.dfm-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dfm-full {
+  /* mobile: natural flow */
+}
+
+@media (min-width: 768px) {
+  .dfm-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 16px 24px !important;
+  }
+  .dfm-full {
+    grid-column: 1 / -1 !important;
+  }
+  .dfm-grid input,
+  .dfm-grid select {
+    height: 40px;
+  }
+}
+
+/* Mobile: 52px touch inputs for deal form */
+@media (max-width: 767px) {
+  .dfm-grid input,
+  .dfm-grid select {
+    height: 52px !important;
+    font-size: 16px !important;
+  }
+}
+
+/* â”€â”€ Auth page inputs (Login / Register) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*
+ * .auth-page-input â€” 16px font on all sizes to prevent iOS
+ * zoom. Height is set via inline style (48px).
+ */
+.auth-page-input {
+  font-size: 16px !important;
+}
+.auth-page-input:focus {
+  border-color: #E8193C !important;
+  box-shadow: 0 0 0 3px rgba(232,25,60,0.12) !important;
+  outline: none !important;
+}
+
+/* â”€â”€ Contact Sheet â€” full screen on mobile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* SheetContent with w-full already handles width, but we
+   ensure it's truly full height on mobile as well */
+@media (max-width: 767px) {
+  [data-vaul-drawer-direction="right"],
+  [data-radix-collection-item] {
+    /* preserve existing behavior */
+  }
+}
+
+/* â”€â”€ Prevent body scroll when modal/sheet open on iOS â”€â”€â”€â”€â”€â”€ */
+body.modal-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   GLOBAL UI POLISH â€” Part 4
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+/* â”€â”€ Custom scrollbars (WebKit) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+::-webkit-scrollbar               { width: 6px; height: 6px; }
+::-webkit-scrollbar-track         { background: transparent; }
+::-webkit-scrollbar-thumb         { background: #d1d5db; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover   { background: #9ca3af; }
+::-webkit-scrollbar-corner        { background: transparent; }
+
+/* â”€â”€ Focus rings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+*:focus-visible {
+  outline: 2px solid rgba(232, 25, 60, 0.5);
+  outline-offset: 2px;
+}
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid rgba(232, 25, 60, 0.5);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* â”€â”€ Typography refinements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3 { letter-spacing: -0.02em; }
+
+/* â”€â”€ Selection color â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+::selection {
+  background: rgba(232, 25, 60, 0.15);
+  color: #111111;
+}
+
+/* â”€â”€ Fullscreen: hide sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+body.calendar-fullscreen .app-sidebar,
+body.pipeline-fullscreen .app-sidebar {
+  display: none !important;
+}
+
+/* â”€â”€ Smooth transitions on interactive elements â”€â”€â”€â”€â”€â”€â”€â”€ */
+button, a, [role="button"] {
+  transition-property: background-color, border-color, color, opacity, box-shadow;
+  transition-duration: 120ms;
+  transition-timing-function: ease;
+}
+
+/* â”€â”€ FullCalendar additional light theme polish â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.zk-calendar .fc-scrollgrid { border-left: none !important; }
+.zk-calendar .fc-timegrid-col { background: #ffffff; }
+.zk-calendar .fc-timegrid-col.fc-day-today { background: rgba(232,25,60,0.03) !important; }
+.zk-calendar .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  background: #E8193C;
+  color: #fff !important;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 0;
+}
+.zk-calendar .fc-list-empty { background: #f9f9fb; color: #9ca3af; }
+.zk-calendar .fc-list-sticky-header .fc-list-day-cushion { background: #f5f5f7 !important; }
