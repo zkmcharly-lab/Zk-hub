@@ -244,3 +244,14 @@ Entorno: Antigravity | ID: 2026-05-22-AG-06 | Cierre: 14:04
 ### Tareas:
 - [ ] Crear .gitignore y configurar git
 - [ ] Subir cÃ³digo a repositorio GitHub
+
+## Sesión 2026-05-22-AG-08
+**Entorno:** Antigravity
+**Foco:** Fixes en formularios de Cobros, Proyectos y Drag & Drop del Pipeline
+### Tareas:
+- [x] Crear ProjectFormModal con vinculación a deals y contacts
+- [x] Conectar botón 'Nuevo proyecto'
+- [x] Reparar silenciosos errores de creacion de cobros (frecuencia, tipo y validacion de fecha)
+- [x] Castear 'desarrollo' as const en Typescript
+**Cierre:** 20:34 · Solucionados formularios, creaciones de cobro y proyectos.
+Entorno: Antigravity | ID: 2026-05-22-AG-08 | Cierre: 20:34

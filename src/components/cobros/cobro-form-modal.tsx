@@ -77,10 +77,10 @@ export function CobroFormModal({ isOpen, onClose, onCreated }: CobroFormModalPro
       deal_id: form.deal_id || null,
       num_pagos: parseInt(form.num_pagos, 10) || 1,
       metodo_pago: form.metodo_pago,
-      frecuencia: form.frecuencia,
       fecha_primer_pago: form.fecha_primer_pago || null,
       estado: form.estado,
       notas: form.notas || null,
+      tipo: 'desarrollo' as const,
     }
 
     createCobro.mutate(dataToSave, {

@@ -1,13 +1,16 @@
 'use client'
 import { useState } from 'react'
 import { usePipeline, useCreateDeal, useUpdateDeal } from '@/hooks/use-deals'
+import { createClient } from '@/lib/supabase/client'
+import { useQueryClient } from '@tanstack/react-query'
 import { useWorkspaceStore } from '@/lib/store'
 import { formatCurrency, avatarColor, initials, formatDate } from '@/lib/utils'
 import { Plus, Loader2, AlertTriangle } from 'lucide-react'
 import { DealFormModal } from '@/components/pipeline/deal-form-modal'
 import { DealPanel } from '@/components/pipeline/deal-panel'
+import { CobrosSetupModal } from '@/components/pipeline/cobros-setup-modal'
 import {
-  DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
+  DndContext, DragOverlay, PointerSensor, useSensor, useSensors, useDroppable,
   type DragEndEvent, type DragStartEvent,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
@@ -66,6 +69,7 @@ function DealCard({ deal, overlay, onClick }: { deal: any; overlay?: boolean; on
 }
 
 function KanbanColumn({ stage, deals, onAddDeal, onDealClick }: { stage: any; deals: any[]; onAddDeal: (stageId: string) => void; onDealClick: (deal: any) => void }) {
+  const { setNodeRef, isOver } = useDroppable({ id: stage.id })
   const totalValor = deals.reduce((s, d) => s + (d.valor ?? 0), 0)
 
   return (
@@ -90,7 +94,16 @@ function KanbanColumn({ stage, deals, onAddDeal, onDealClick }: { stage: any; de
 
       {/* Cards */}
       <SortableContext items={deals.map((d) => d.id)} strategy={verticalListSortingStrategy}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 100 }}>
+        <div 
+          ref={setNodeRef}
+          style={{ 
+            display: 'flex', flexDirection: 'column', gap: 8, 
+            flex: 1, minHeight: 100,
+            backgroundColor: isOver ? 'rgba(232,25,60,0.04)' : 'transparent',
+            borderRadius: 8,
+            transition: 'background-color 150ms'
+          }}
+        >
           {deals.map((deal) => (
             <DealCard key={deal.id} deal={deal} onClick={() => onDealClick(deal)} />
           ))}
@@ -122,6 +135,11 @@ export default function PipelinePage() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [dealModalStage, setDealModalStage] = useState<string | null>(null)
   const [selectedDeal, setSelectedDeal] = useState<any | null>(null)
+  const [cobroSetupOpen, setCobroSetupOpen] = useState(false)
+  const [cobroSetupDeal, setCobroSetupDeal] = useState<any | null>(null)
+
+  const supabase = createClient()
+  const queryClient = useQueryClient()
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -129,16 +147,35 @@ export default function PipelinePage() {
 
   function handleDragStart({ active }: DragStartEvent) { setActiveId(active.id as string) }
 
-  function handleDragEnd({ active, over }: DragEndEvent) {
+  async function handleDragEnd({ active, over }: DragEndEvent) {
     setActiveId(null)
     if (!over || active.id === over.id) return
-    // Find target stage by checking which stage the card was dropped on or near
-    const targetStage = pipeline?.stages?.find((s) =>
-      s.deals?.some((d: any) => d.id === over.id)
-    ) ?? pipeline?.stages?.find((s) => s.id === over.id)
 
-    if (targetStage) {
-      updateDeal.mutate({ id: active.id as string, data: { stage_id: targetStage.id } })
+    let targetStage = pipeline?.stages?.find(s => s.id === over.id)
+    
+    if (!targetStage) {
+      targetStage = pipeline?.stages?.find(s =>
+        s.deals?.some((d: any) => d.id === over.id)
+      )
+    }
+
+    if (!targetStage) return
+
+    await supabase
+      .from('deals')
+      .update({ stage_id: targetStage.id })
+      .eq('id', active.id as string)
+
+    queryClient.invalidateQueries({ queryKey: ['pipeline'] })
+    
+    if (targetStage.nombre === 'En cobro') {
+      const dealToSetup = pipeline?.stages
+        ?.flatMap(s => s.deals ?? [])
+        ?.find(d => d.id === active.id)
+      if (dealToSetup) {
+        setCobroSetupDeal(dealToSetup)
+        setCobroSetupOpen(true)
+      }
     }
   }
 
@@ -211,6 +248,12 @@ export default function PipelinePage() {
           onClose={() => setSelectedDeal(null)}
         />
       )}
+
+      <CobrosSetupModal 
+        isOpen={cobroSetupOpen} 
+        onClose={() => setCobroSetupOpen(false)} 
+        deal={cobroSetupDeal} 
+      />
     </div>
   )
 }

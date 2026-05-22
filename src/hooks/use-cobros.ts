@@ -24,10 +24,13 @@ export interface Cobro {
   metodo_pago: string
   fecha_primer_pago: string | null
   frecuencia: string
+  tipo: 'desarrollo' | 'mantenimiento'
   estado: string
   notas: string | null
   created_at: string
   contact?: { id: string; nombre: string; empresa: string | null } | null
+  deal?: { titulo: string } | null
+  proyecto?: { nombre: string } | null
   pagos?: CobroPago[]
 }
 
@@ -40,13 +43,15 @@ export function useCobros() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('cobros')
-        .select('*, contacts(id, nombre, empresa), cobro_pagos(*)')
+        .select('*, contacts(id, nombre, empresa), deals(id, titulo), cobro_pagos(*)')
         .eq('workspace_id', workspace!.id)
         .order('created_at', { ascending: false })
       if (error) throw error
       return (data ?? []).map((c: any) => ({
         ...c,
         contact: c.contacts ?? null,
+        deal: c.deals ?? null,
+        proyecto: null,
         pagos: (c.cobro_pagos ?? []).sort((a: CobroPago, b: CobroPago) => a.numero_pago - b.numero_pago),
       })) as Cobro[]
     },
@@ -68,6 +73,29 @@ export function useCreateCobro() {
         .select()
         .single()
       if (error) throw error
+
+      // Generar cuotas automáticamente
+      if (created) {
+        const numPagos = created.num_pagos || 1
+        const montoTotal = created.monto_total || 0
+        const fechaBase = created.fecha_primer_pago ? new Date(created.fecha_primer_pago) : new Date()
+        
+        const cuotas = []
+        for (let i = 0; i < numPagos; i++) {
+          const fecha = new Date(fechaBase)
+          fecha.setMonth(fecha.getMonth() + i)
+          cuotas.push({
+            cobro_id: created.id,
+            numero_pago: i + 1,
+            fecha_vencimiento: fecha.toISOString().split('T')[0],
+            monto: montoTotal / numPagos,
+            estado: 'pendiente'
+          })
+        }
+        const { error: cuotasError } = await supabase.from('cobro_pagos').insert(cuotas)
+        if (cuotasError) throw cuotasError
+      }
+
       return created as Cobro
     },
     onSuccess: () => {

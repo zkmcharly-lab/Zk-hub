@@ -4,6 +4,22 @@ import { useContactFolders } from '@/hooks/use-contact-folders'
 import { X, MapPin, Globe, Phone, Building2, Loader2 } from 'lucide-react'
 import { COUNTRY_LIST, getRegions, getRegionLabel } from '@/utils/locations'
 
+const SECTORES = [
+  'Inmobiliaria',
+  'Legal / Abogados', 
+  'Salud / Médicos',
+  'Restaurante / Food',
+  'Ecommerce / Tienda online',
+  'Educación',
+  'Construcción',
+  'Marketing / Agencia',
+  'Tecnología',
+  'Finanzas / Contabilidad',
+  'Viajes / Turismo',
+  'Moda / Retail',
+  'Otro'
+]
+
 interface ContactFormModalProps {
   isOpen: boolean
   onClose: () => void
@@ -51,6 +67,7 @@ export function ContactFormModal({ isOpen, onClose, contactId, onCreated }: Cont
     preferred_currency: 'USD', folder_id: '',
   })
   const [tagInput, setTagInput] = useState('')
+  const [selectedNicho, setSelectedNicho] = useState('')
 
   useEffect(() => {
     if (isOpen) {
@@ -74,6 +91,13 @@ export function ContactFormModal({ isOpen, onClose, contactId, onCreated }: Cont
           preferred_currency: existingContact.preferred_currency ?? 'USD',
           folder_id: existingContact.folder_id ?? '',
         })
+        
+        const initialNicho = existingContact.nicho ?? ''
+        if (initialNicho && !SECTORES.includes(initialNicho) && initialNicho !== 'Otro') {
+          setSelectedNicho('Otro')
+        } else {
+          setSelectedNicho(initialNicho)
+        }
       } else if (!isEditing) {
         setForm({
           nombre: '', email: '', telefono: '', empresa: '', sitio_web: '',
@@ -81,6 +105,7 @@ export function ContactFormModal({ isOpen, onClose, contactId, onCreated }: Cont
           pais: '', region: '', maps_url: '', facebook_url: '', instagram_url: '',
           temperatura: 'frio', nicho: '', preferred_currency: 'USD', folder_id: '',
         })
+        setSelectedNicho('')
       }
     }
   }, [isOpen, isEditing, existingContact])
@@ -194,7 +219,27 @@ export function ContactFormModal({ isOpen, onClose, contactId, onCreated }: Cont
                 </div>
                 <div>
                   <Lbl>Nicho / Sector</Lbl>
-                  <input value={form.nicho} onChange={(e) => setForm({ ...form, nicho: e.target.value })} style={inputStyle} placeholder="Ej: Ecommerce, Saas, etc." />
+                  <select 
+                    value={selectedNicho} 
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setSelectedNicho(val)
+                      if (val !== 'Otro') setForm({ ...form, nicho: val })
+                      else setForm({ ...form, nicho: '' })
+                    }} 
+                    style={selectStyle}
+                  >
+                    <option value="">Seleccionar sector...</option>
+                    {SECTORES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  {selectedNicho === 'Otro' && (
+                    <input 
+                      value={form.nicho} 
+                      onChange={(e) => setForm({ ...form, nicho: e.target.value })} 
+                      style={{ ...inputStyle, marginTop: 8 }} 
+                      placeholder="Escribe el sector..." 
+                    />
+                  )}
                 </div>
 
                 {/* Moneda Preferida & Carpeta */}

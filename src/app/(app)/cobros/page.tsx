@@ -1,10 +1,12 @@
 'use client'
+
 import { useState } from 'react'
 import { useCobros, useDeleteCobro } from '@/hooks/use-cobros'
 import { formatCurrency, formatDate, avatarColor, initials } from '@/lib/utils'
-import { CreditCard, Plus, Loader2, CheckCircle2, Clock, AlertTriangle, CircleDollarSign, Trash2 } from 'lucide-react'
-import { CobroFormModal } from '@/components/cobros/cobro-form-modal'
+import { CreditCard, Loader2, AlertTriangle, CircleDollarSign, Trash2, Plus } from 'lucide-react'
 import { CobroPanel } from '@/components/cobros/cobro-panel'
+import { MantenimientoCard } from '@/components/cobros/mantenimiento-card'
+import { CobroFormModal } from '@/components/cobros/cobro-form-modal'
 
 const ESTADO_COLOR: Record<string, { bg: string; color: string; label: string }> = {
   pendiente:    { bg: '#fef3c7', color: '#92400e', label: 'Pendiente' },
@@ -25,16 +27,23 @@ export default function CobrosPage() {
   const cobros = cobrosData ?? []
 
   const [selected, setSelected] = useState<any | null>(null)
-  const [filter, setFilter] = useState<'todos' | 'pendiente' | 'en_progreso' | 'completado' | 'vencido'>('todos')
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const filtered = filter === 'todos' ? cobros : cobros.filter((c) => c.estado === filter)
+  const mantenimientos = cobros.filter(c => c.tipo === 'mantenimiento')
+  const desarrollos = cobros.filter(c => c.tipo === 'desarrollo')
 
-  // Stats
-  const totPend = cobros.filter((c) => c.estado === 'pendiente').reduce((s, c) => s + c.monto_total, 0)
-  const totPagado = cobros.filter((c) => c.estado === 'completado').reduce((s, c) => s + c.monto_total, 0)
-  const totVencido = cobros.filter((c) => c.estado === 'vencido').reduce((s, c) => s + c.monto_total, 0)
-  const totGeneral = cobros.reduce((s, c) => s + c.monto_total, 0)
+  // KPIs
+  const mantenimientosActivos = mantenimientos.filter(c => c.estado !== 'cancelado' && c.estado !== 'completado').length
+  const mrrActual = mantenimientos.filter(c => c.estado !== 'cancelado' && c.estado !== 'completado').reduce((s, c) => s + c.monto_total, 0)
+  const desarrollosPendientes = desarrollos.filter(c => c.estado === 'pendiente' || c.estado === 'en_progreso').length
+  
+  // Cobrado este mes (heurística simple para la UI)
+  const cobradoMes = cobros.reduce((s, c) => {
+    const pagosCompletados = c.pagos?.filter(p => p.estado === 'pagado') || []
+    return s + pagosCompletados.reduce((sp, p) => sp + p.monto, 0)
+  }, 0)
+
+  const totVencidos = cobros.filter(c => c.estado === 'vencido').reduce((s, c) => s + c.monto_total, 0)
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -44,199 +53,170 @@ export default function CobrosPage() {
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center bg-[#F5F5F5]">
+        <Loader2 size={24} className="animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
   return (
-    <div style={{ flex: 1, background: 'var(--zk-bg-page)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-        {/* Header */}
-        <div style={{ background: 'var(--zk-bg-surface)', borderBottom: '1px solid var(--zk-border)', padding: '20px 28px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <CircleDollarSign size={20} color="#0ea5e9" />
-              </div>
-              <div>
-                <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--zk-text-primary)', margin: 0 }}>Cobros</h1>
-                <p style={{ fontSize: 13, color: 'var(--zk-text-muted)', margin: 0 }}>Seguimiento de pagos por cliente y deal</p>
-              </div>
-            </div>
-            <button style={{
-              display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px',
-              backgroundColor: '#E8193C', color: '#fff', border: 'none', borderRadius: 8,
-              fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-            }}
-              onClick={() => setIsModalOpen(true)}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#C8102E'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#E8193C'}
-            >
-              <Plus size={14} /> Nuevo cobro
-            </button>
-          </div>
-
-          {/* Stats cards */}
-          <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 2 }}>
-            {[
-              { label: 'Total cobros', value: formatCurrency(totGeneral), color: '#6366f1', bg: '#eef2ff' },
-              { label: 'Pendientes', value: formatCurrency(totPend), color: '#d97706', bg: '#fffbeb' },
-              { label: 'En progreso', value: cobros.filter(c => c.estado === 'en_progreso').length, color: '#0ea5e9', bg: '#e0f2fe' },
-              { label: 'Cobrados', value: formatCurrency(totPagado), color: '#10b981', bg: '#d1fae5' },
-              { label: 'Vencidos', value: formatCurrency(totVencido), color: '#ef4444', bg: '#fee2e2' },
-            ].map(s => (
-              <div key={s.label} style={{ padding: '12px 16px', background: s.bg, borderRadius: 10, minWidth: 120, textAlign: 'center', flexShrink: 0 }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
-                <div style={{ fontSize: 11, color: s.color, fontWeight: 600, opacity: 0.85 }}>{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Filter tabs */}
-        <div style={{ background: 'var(--zk-bg-surface)', borderBottom: '1px solid var(--zk-border)', padding: '0 28px', display: 'flex', gap: 4 }}>
-          {(['todos', 'pendiente', 'en_progreso', 'completado', 'vencido'] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              style={{
-                padding: '10px 14px', border: 'none', background: 'none', cursor: 'pointer',
-                fontSize: 13, fontWeight: filter === f ? 700 : 500, fontFamily: 'inherit',
-                color: filter === f ? '#0ea5e9' : 'var(--zk-text-muted)',
-                borderBottom: filter === f ? '2px solid #0ea5e9' : '2px solid transparent',
-              }}
-            >
-              {f === 'todos' ? 'Todos' : ESTADO_COLOR[f]?.label ?? f}
-              {f !== 'todos' && <span style={{ marginLeft: 6, fontSize: 11, background: filter === f ? '#e0f2fe' : 'var(--zk-bg-elevated)', color: filter === f ? '#0ea5e9' : 'var(--zk-text-muted)', borderRadius: 20, padding: '1px 7px' }}>
-                {cobros.filter(c => c.estado === f).length}
-              </span>}
-            </button>
-          ))}
-        </div>
-
-        {/* Table */}
-        <div style={{ flex: 1, padding: '20px 28px', overflowX: 'auto' }}>
-          {isLoading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
-              <Loader2 size={36} style={{ animation: 'spin 0.8s linear infinite', color: '#0ea5e9' }} />
-            </div>
-          ) : filtered.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <CircleDollarSign size={48} color="var(--zk-text-muted)" style={{ marginBottom: 12, opacity: 0.5 }} />
-              <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--zk-text-primary)', marginBottom: 6 }}>Sin cobros{filter !== 'todos' ? ` ${ESTADO_COLOR[filter]?.label?.toLowerCase()}` : ''}</div>
-              <div style={{ fontSize: 13, color: 'var(--zk-text-secondary)' }}>
-                {filter === 'todos'
-                  ? 'Mové un deal a la columna "En cobro" del pipeline para empezar a registrar cobros.'
-                  : 'No hay cobros con este estado.'}
-              </div>
-            </div>
-          ) : (
-            <div style={{ background: 'var(--zk-bg-surface)', borderRadius: 14, border: '1px solid var(--zk-border)', overflow: 'hidden' }}>
-              {/* Table header */}
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.2fr 1fr 1.2fr 1.2fr 100px', padding: '10px 16px', background: 'var(--zk-bg-elevated)', borderBottom: '1px solid var(--zk-border)' }}>
-                {['Cliente', 'Deal', 'Monto', 'Método', 'Cuotas', 'Próx. pago', 'Estado'].map(h => (
-                  <div key={h} style={{ fontSize: 11, fontWeight: 700, color: 'var(--zk-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</div>
-                ))}
-              </div>
-
-              {filtered.map((cobro, i) => {
-                const st = ESTADO_COLOR[cobro.estado] ?? ESTADO_COLOR.pendiente
-                const pagosPagados = cobro.pagos?.filter((p: any) => p.estado === 'pagado').length ?? 0
-                const total = cobro.num_pagos
-                const progress = total > 0 ? Math.round((pagosPagados / total) * 100) : 0
-                const isSelected = selected?.id === cobro.id
-                
-                // Encontrar próxima cuota pendiente
-                const prox = cobro.pagos?.find((p: any) => p.estado !== 'pagado')
-
-                return (
-                  <div
-                    key={cobro.id}
-                    onClick={() => setSelected(isSelected ? null : cobro)}
-                    style={{
-                      display: 'grid', gridTemplateColumns: '2fr 2fr 1.2fr 1fr 1.2fr 1.2fr 100px',
-                      padding: '14px 16px', borderBottom: i < filtered.length - 1 ? '1px solid var(--zk-border)' : 'none',
-                      cursor: 'pointer', alignItems: 'center',
-                      background: isSelected ? 'var(--zk-bg-hover)' : 'transparent',
-                      transition: 'background 0.15s',
-                    }}
-                    onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'var(--zk-bg-hover)' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = isSelected ? 'var(--zk-bg-hover)' : 'transparent' }}
-                  >
-                    {/* Cliente */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: avatarColor(cobro.contact?.nombre ?? '?'), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 600 }}>
-                        {initials(cobro.contact?.nombre ?? '?')}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--zk-text-primary)' }}>{cobro.contact?.nombre ?? 'Sin contacto'}</div>
-                        <div style={{ fontSize: 12, color: 'var(--zk-text-muted)' }}>{cobro.contact?.empresa ?? ''}</div>
-                      </div>
-                    </div>
-
-                    {/* Deal */}
-                    <div style={{ fontSize: 13, color: 'var(--zk-text-secondary)', fontWeight: 500, paddingRight: 8 }}>
-                      {cobro.deal_id ? `Deal ID: ${cobro.deal_id.substring(0,8)}` : <span style={{ color: 'var(--zk-text-muted)' }}>Sin deal</span>}
-                    </div>
-
-                    {/* Monto */}
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0ea5e9' }}>
-                      {formatCurrency(cobro.monto_total, cobro.moneda)}
-                    </div>
-
-                    {/* Método */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--zk-text-secondary)' }}>
-                      {cobro.metodo_pago === 'stripe' ? <CreditCard size={14} /> : <CircleDollarSign size={14} />}
-                      {cobro.metodo_pago === 'stripe' ? 'Stripe' : 'Trans.'}
-                    </div>
-
-                    {/* Cuotas */}
-                    <div>
-                      <div style={{ fontSize: 12, color: 'var(--zk-text-primary)', fontWeight: 600, marginBottom: 4 }}>{pagosPagados}/{total} pagos</div>
-                      <div style={{ height: 5, background: 'var(--zk-bg-elevated)', borderRadius: 3, width: 80, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${progress}%`, background: progress === 100 ? '#10b981' : '#0ea5e9', borderRadius: 3 }} />
-                      </div>
-                    </div>
-
-                    {/* Próx. pago */}
-                    <div style={{ fontSize: 13, color: prox && isVencido(prox.fecha_vencimiento) ? '#ef4444' : 'var(--zk-text-secondary)', fontWeight: prox && isVencido(prox.fecha_vencimiento) ? 600 : 400 }}>
-                      {prox?.fecha_vencimiento ? (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          {isVencido(prox.fecha_vencimiento) && <AlertTriangle size={13} color="#ef4444" />}
-                          {formatDate(prox.fecha_vencimiento)}
-                        </span>
-                      ) : (
-                        <span style={{ color: cobro.estado === 'completado' ? '#10b981' : 'var(--zk-text-muted)' }}>
-                          {cobro.estado === 'completado' ? '✓ Completado' : '—'}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Estado + actions */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} onClick={e => e.stopPropagation()}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: st.bg, color: st.color, fontSize: 11, fontWeight: 700 }}>
-                        {st.label}
-                      </div>
-                      <button
-                        onClick={(e) => handleDelete(cobro.id, e)}
-                        disabled={deleteCobro.isPending}
-                        style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--zk-text-muted)', padding: 3 }}
-                        title="Eliminar cobro"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+    <div className="flex h-full flex-col bg-[#F5F5F5] overflow-y-auto">
+      {/* Header */}
+      <div className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6">
+        <h1 className="text-[16px] font-bold text-gray-900 tracking-tight">Cobros</h1>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 rounded-[8px] bg-[#E8193C] px-4 py-2 text-[13px] font-bold text-white hover:bg-[#C8102E] transition-colors"
+        >
+          <Plus size={15} /> Nuevo cobro
+        </button>
       </div>
 
-      <CobroFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-      
-      {/* Detail panel */}
+      <div className="p-6 space-y-8">
+        
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="rounded-[10px] bg-[rgb(238,242,255)] px-4 py-3">
+            <p className="text-[22px] font-extrabold text-[rgb(99,102,241)]">{mantenimientosActivos}</p>
+            <p className="text-[11px] font-semibold text-[rgb(99,102,241)]/80 uppercase tracking-wider mt-1">Mantenimientos</p>
+          </div>
+          <div className="rounded-[10px] bg-[rgb(209,250,229)] px-4 py-3">
+            <p className="text-[22px] font-extrabold text-[rgb(16,185,129)]">{formatCurrency(mrrActual)}</p>
+            <p className="text-[11px] font-semibold text-[rgb(16,185,129)]/80 uppercase tracking-wider mt-1">MRR Actual</p>
+          </div>
+          <div className="rounded-[10px] bg-[rgb(224,242,254)] px-4 py-3">
+            <p className="text-[22px] font-extrabold text-[rgb(14,165,233)]">{desarrollosPendientes}</p>
+            <p className="text-[11px] font-semibold text-[rgb(14,165,233)]/80 uppercase tracking-wider mt-1">Desarrollos Pend.</p>
+          </div>
+          <div className="rounded-[10px] bg-[rgb(209,250,229)] px-4 py-3">
+            <p className="text-[22px] font-extrabold text-[rgb(16,185,129)]">{formatCurrency(cobradoMes)}</p>
+            <p className="text-[11px] font-semibold text-[rgb(16,185,129)]/80 uppercase tracking-wider mt-1">Cobrado Mes</p>
+          </div>
+          <div className="rounded-[10px] bg-[rgb(254,226,226)] px-4 py-3">
+            <p className="text-[22px] font-extrabold text-[rgb(239,68,68)]">{formatCurrency(totVencidos)}</p>
+            <p className="text-[11px] font-semibold text-[rgb(239,68,68)]/80 uppercase tracking-wider mt-1">Vencidos</p>
+          </div>
+        </div>
+
+        {/* Sección A — Mantenimientos */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[16px] font-bold text-gray-900">Mantenimientos Activos</h2>
+          </div>
+          
+          {mantenimientos.length === 0 ? (
+            <div className="rounded-[14px] border-[0.8px] border-gray-200 bg-white p-8 text-center text-gray-500 text-[13px]">
+              No hay mantenimientos activos.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {mantenimientos.map(cobro => (
+                <MantenimientoCard key={cobro.id} cobro={cobro} onRegistrarPago={() => setSelected(cobro)} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Sección B — Desarrollos */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[16px] font-bold text-gray-900">Cobros por Desarrollo</h2>
+          </div>
+          <div className="rounded-[14px] border-[0.8px] border-gray-200 bg-white overflow-hidden">
+            {desarrollos.length === 0 ? (
+              <div className="p-8 text-center text-gray-500 text-[13px]">
+                No hay cobros de desarrollo.
+              </div>
+            ) : (
+              <table className="w-full text-left text-[13px]">
+                <thead className="bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase text-gray-500">
+                  <tr>
+                    <th className="px-5 py-3">Cliente</th>
+                    <th className="px-5 py-3">Deal</th>
+                    <th className="px-5 py-3">Monto</th>
+                    <th className="px-5 py-3">Método</th>
+                    <th className="px-5 py-3">Cuotas</th>
+                    <th className="px-5 py-3">Próximo</th>
+                    <th className="px-5 py-3">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 text-gray-700">
+                  {desarrollos.map((cobro) => {
+                    const st = ESTADO_COLOR[cobro.estado] ?? ESTADO_COLOR.pendiente
+                    const pagosPagados = cobro.pagos?.filter((p: any) => p.estado === 'pagado').length ?? 0
+                    const total = cobro.num_pagos
+                    const isSelected = selected?.id === cobro.id
+                    const prox = cobro.pagos?.find((p: any) => p.estado !== 'pagado')
+
+                    return (
+                      <tr 
+                        key={cobro.id}
+                        onClick={() => setSelected(isSelected ? null : cobro)}
+                        className="cursor-pointer hover:bg-gray-50 transition-colors"
+                      >
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold" style={{ backgroundColor: avatarColor(cobro.contact?.nombre ?? '?') }}>
+                              {initials(cobro.contact?.nombre ?? '?')}
+                            </div>
+                            <div>
+                              <div className="font-bold text-gray-900">{cobro.contact?.nombre ?? 'Sin cliente'}</div>
+                              {cobro.contact?.empresa && <div className="text-[11px] text-gray-500">{cobro.contact.empresa}</div>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-gray-500">{cobro.deal?.titulo || (cobro.deal_id ? `Deal: ${cobro.deal_id.substring(0,8)}` : 'Sin deal')}</td>
+                        <td className="px-5 py-4 font-bold text-[#E8193C]">{formatCurrency(cobro.monto_total, cobro.moneda)}</td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-1.5 text-gray-500">
+                            {cobro.metodo_pago === 'stripe' ? <CreditCard size={14} /> : <CircleDollarSign size={14} />}
+                            <span className="capitalize">{cobro.metodo_pago}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-gray-500">{pagosPagados}/{total}</td>
+                        <td className="px-5 py-4">
+                          {prox?.fecha_vencimiento ? (
+                            <span className={`flex items-center gap-1.5 ${isVencido(prox.fecha_vencimiento) ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+                              {isVencido(prox.fecha_vencimiento) && <AlertTriangle size={13} />}
+                              {formatDate(prox.fecha_vencimiento)}
+                            </span>
+                          ) : (
+                            <span style={{ color: cobro.estado === 'completado' ? '#10b981' : '#d1d5db' }}>
+                              {cobro.estado === 'completado' ? '✓ Completado' : '—'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <span className="rounded-full px-2 py-0.5 text-[11px] font-bold border" style={{ backgroundColor: st.bg, color: st.color, borderColor: st.color + '30' }}>
+                              {st.label}
+                            </span>
+                            <button
+                              onClick={(e) => handleDelete(cobro.id, e)}
+                              disabled={deleteCobro.isPending}
+                              className="text-gray-400 hover:text-red-500 transition-colors"
+                              title="Eliminar cobro"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </section>
+      </div>
+
       {selected && (
         <>
           <div
-            style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(0,0,0,0.12)' }}
+            className="fixed inset-0 z-40 bg-black/10"
             onClick={() => setSelected(null)}
           />
           <CobroPanel
@@ -245,6 +225,8 @@ export default function CobrosPage() {
           />
         </>
       )}
+
+      <CobroFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   )
 }

@@ -1,7 +1,10 @@
 'use client'
-import { useState } from 'react'
-import { useUpdateCobro, useUpdateCobroPago } from '@/hooks/use-cobros'
+import { useState, useCallback, useEffect } from 'react'
+import { useUpdateCobro } from '@/hooks/use-cobros'
 import { formatCurrency, formatDate, avatarColor, initials } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
+import { useQueryClient } from '@tanstack/react-query'
+import { useWorkspaceStore } from '@/lib/store'
 import { X, Check, Clock, AlertTriangle, RefreshCw, Edit2 } from 'lucide-react'
 
 // Iconos y colores de estados de pago
@@ -24,8 +27,14 @@ function isVencido(d: string | null) {
 
 export function CobroPanel({ cobro, onClose }: { cobro: any; onClose: () => void }) {
   const updateCobro = useUpdateCobro()
-  const updatePago = useUpdateCobroPago()
+  const supabase = createClient()
+  const queryClient = useQueryClient()
+  const { workspace } = useWorkspaceStore()
+  
   const [editMode, setEditMode] = useState(false)
+  const [pagos, setPagos] = useState<any[]>([])
+  const [loadingPagos, setLoadingPagos] = useState(false)
+
   const [form, setForm] = useState({
     num_pagos: cobro.num_pagos,
     metodo_pago: cobro.metodo_pago,
@@ -33,6 +42,27 @@ export function CobroPanel({ cobro, onClose }: { cobro: any; onClose: () => void
     frecuencia: cobro.frecuencia,
     notas: cobro.notas ?? '',
   })
+
+  const loadPagos = useCallback(async () => {
+    try {
+      setLoadingPagos(true)
+      const { data, error } = await supabase
+        .from('cobro_pagos')
+        .select('*')
+        .eq('cobro_id', cobro.id)
+        .order('numero_pago', { ascending: true })
+      if (error) throw error
+      setPagos(data || [])
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoadingPagos(false)
+    }
+  }, [cobro.id, supabase])
+
+  useEffect(() => {
+    loadPagos()
+  }, [loadPagos])
 
   const handleSave = () => {
     updateCobro.mutate({
@@ -44,22 +74,32 @@ export function CobroPanel({ cobro, onClose }: { cobro: any; onClose: () => void
     }, {
       onSuccess: () => {
         setEditMode(false)
-        // La BDD regenerará los pagos automáticamente a través de un trigger o similar
-        // (Asumimos que el backend gestiona la regeneración de cuotas al cambiar estos campos)
+        loadPagos()
       }
     })
   }
 
-  const markPago = (pagoId: string, nuevoEstado: string) => {
-    const fechaPago = nuevoEstado === 'pagado' ? new Date().toISOString().split('T')[0] : null
-    updatePago.mutate({ id: pagoId, data: { estado: nuevoEstado as any, fecha_pago: fechaPago } })
+  const markPago = async (pagoId: string, nuevoEstado: string) => {
+    try {
+      const fechaPago = nuevoEstado === 'pagado' ? new Date().toISOString().split('T')[0] : null
+      const { error } = await supabase
+        .from('cobro_pagos')
+        .update({ estado: nuevoEstado as any, fecha_pago: fechaPago })
+        .eq('id', pagoId)
+      
+      if (error) throw error
+      
+      await queryClient.invalidateQueries({ queryKey: ['cobros', workspace?.id] })
+      loadPagos()
+    } catch (err) {
+      console.error(err)
+      alert('Error al actualizar pago')
+    }
   }
-
-  const pagos = cobro.pagos ?? []
   const paid = pagos.filter((p: any) => p.estado === 'pagado').length
   const total = pagos.length
   const progress = total > 0 ? Math.round((paid / total) * 100) : 0
-  const contactNombre = cobro.contact?.nombre ?? 'Sin contacto'
+  const contactNombre = cobro.contacts?.nombre ?? cobro.contact?.nombre ?? 'Sin contacto'
 
   return (
     <div style={{
@@ -81,7 +121,7 @@ export function CobroPanel({ cobro, onClose }: { cobro: any; onClose: () => void
           </div>
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--zk-text-primary)' }}>{contactNombre}</div>
-            <div style={{ fontSize: 13, color: 'var(--zk-text-secondary)' }}>{cobro.contact?.empresa ?? ''}</div>
+            <div style={{ fontSize: 13, color: 'var(--zk-text-secondary)' }}>{cobro.contacts?.empresa ?? cobro.contact?.empresa ?? ''}</div>
           </div>
         </div>
         <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--zk-text-muted)', padding: 4 }}>
@@ -94,7 +134,7 @@ export function CobroPanel({ cobro, onClose }: { cobro: any; onClose: () => void
         {cobro.deal_id && (
           <div style={{ marginBottom: 20, padding: 14, background: 'var(--zk-bg-surface)', borderRadius: 10, border: '1px solid var(--zk-border)' }}>
             <div style={{ fontSize: 12, color: 'var(--zk-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Deal vinculado</div>
-            <div style={{ fontWeight: 600, color: 'var(--zk-text-primary)', fontSize: 15 }}>{/* Titulo del deal si estuviera poblado */}Deal ID: {cobro.deal_id.substring(0,8)}</div>
+            <div style={{ fontWeight: 600, color: 'var(--zk-text-primary)', fontSize: 15 }}>{cobro.deals?.titulo ?? cobro.deal?.titulo ?? `Deal ID: ${cobro.deal_id.substring(0,8)}`}</div>
             <div style={{ fontSize: 13, color: '#0ea5e9', fontWeight: 700, marginTop: 2 }}>
               {formatCurrency(cobro.monto_total, cobro.moneda)}
             </div>

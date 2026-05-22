@@ -2,7 +2,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  LayoutDashboard, Users, TrendingUp, CreditCard, CheckSquare,
+  LayoutDashboard, Users, TrendingUp, CreditCard, FolderKanban,
   Calendar, MessageSquare, Settings, LogOut, ChevronDown,
 } from 'lucide-react'
 import { useAuthStore, useWorkspaceStore } from '@/lib/store'
@@ -14,7 +14,7 @@ const NAV_MAIN = [
   { label: 'Contactos', icon: Users, href: '/contacts' },
   { label: 'Pipeline', icon: TrendingUp, href: '/pipeline' },
   { label: 'Cobros', icon: CreditCard, href: '/cobros' },
-  { label: 'Tareas', icon: CheckSquare, href: '/tasks' },
+  { label: 'Proyectos', icon: FolderKanban, href: '/proyectos' },
 ]
 
 const NAV_TOOLS = [
