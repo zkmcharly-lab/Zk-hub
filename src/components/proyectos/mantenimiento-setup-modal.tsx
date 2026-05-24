@@ -46,7 +46,7 @@ export function MantenimientoSetupModal({ isOpen, onClose, proyecto }: Mantenimi
         contact_id: proyecto.contact_id,
         deal_id: proyecto.deal_id,
         tipo: 'mantenimiento',
-        monto_total: Number(monto),
+        monto_total: Number(monto) * numCuotas,
         moneda: moneda,
         num_pagos: numCuotas,
         metodo_pago: metodo,
@@ -60,7 +60,7 @@ export function MantenimientoSetupModal({ isOpen, onClose, proyecto }: Mantenimi
 
       if (data) {
         const fechaBase = fecha ? new Date(fecha) : new Date()
-        const montoTotal = Number(monto) || 0
+        const montoMensual = Number(monto) || 0
         const nPagos = numCuotas
         const pagosRows = []
         for (let i = 0; i < nPagos; i++) {
@@ -70,7 +70,7 @@ export function MantenimientoSetupModal({ isOpen, onClose, proyecto }: Mantenimi
             cobro_id: data.id,
             numero_pago: i + 1,
             fecha_vencimiento: f.toISOString().split('T')[0],
-            monto: montoTotal,
+            monto: montoMensual,
             estado: 'pendiente'
           })
         }

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useWorkspaceStore } from '@/lib/store'
+import { logActivity } from '@/lib/activity'
 
 export interface PipelineStage {
   id: string
@@ -21,6 +22,7 @@ export interface Deal {
   posicion: number
   fecha_cierre: string | null
   descripcion: string | null
+  notas: string | null
   prioridad: 'low' | 'normal' | 'high'
   subtipo: string | null
   currency: string | null
@@ -115,9 +117,12 @@ export function useCreateDeal() {
       if (error) throw error
       return created as Deal
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['pipeline', workspace?.id] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats', workspace?.id] })
+      if (workspace?.id) {
+        logActivity(workspace.id, 'deal_created', 'deal', created.id, created.titulo)
+      }
     },
   })
 }

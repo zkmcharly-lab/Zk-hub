@@ -20,7 +20,8 @@ import {
   useDashboardDealsOverTime, 
   useDashboardAttention, 
   useDashboardActivity, 
-  useDashboardTasksSummary 
+  useDashboardTasksSummary,
+  useDashboardTeamTasks 
 } from "@/hooks/use-dashboard";
 import { useReminders, useUpdateReminder } from "@/hooks/use-reminders";
 import { useExchangeRates } from "@/hooks/use-exchange-rates";
@@ -28,6 +29,15 @@ import { useExchangeRates } from "@/hooks/use-exchange-rates";
 const ZK_RED = "#E8193C";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+function formatMonto(monto: number, moneda: string) {
+  const code = moneda || 'USD';
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: code,
+    minimumFractionDigits: 0
+  }).format(monto)
+}
+
 function greeting(nombre: string) {
   const h = new Date().getHours();
   const saludo = h >= 5 && h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
@@ -55,12 +65,21 @@ const CANAL_ICON: Record<string, React.ReactNode> = {
   reunion: <Calendar style={{ width: 11, height: 11 }} />,
 };
 
-const EVENT_ICONS: Record<string, React.ReactNode> = {
-  deal_created: <Briefcase style={{ width: 14, height: 14, color: "#E8193C" }} />,
-  deal_won: <Trophy style={{ width: 14, height: 14, color: "#10b981" }} />,
-  contact_created: <Users style={{ width: 14, height: 14, color: "#8b5cf6" }} />,
-  conversation_created: <MessageSquare style={{ width: 14, height: 14, color: "#3b82f6" }} />,
-  message_sent: <MessageSquare style={{ width: 14, height: 14, color: "#f59e0b" }} />,
+const ENTITY_ICONS: Record<string, string> = {
+  contact: "👤",
+  deal: "💼",
+  proyecto: "📁",
+  cobro: "💰",
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  contact_created: "Contacto creado",
+  contact_updated: "Contacto actualizado",
+  deal_created: "Deal creado",
+  deal_stage_changed: "Deal movido",
+  proyecto_created: "Proyecto creado",
+  proyecto_fase: "Fase avanzada",
+  cobro_created: "Cobro creado",
 };
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -106,11 +125,11 @@ function NewWorkspaceWelcome({ navigate }: { navigate: (to: string) => void }) {
 }
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
-function KpiCard({ icon, label, value, delta, deltaLabel, isCurrency = false, loading, currency }: {
-  icon: React.ReactNode; label: string; value: number; delta: number; deltaLabel: string; isCurrency?: boolean; loading?: boolean; currency?: string;
+function KpiCard({ icon, label, value, delta, deltaLabel, isCurrency = false, loading, currency, customValue }: {
+  icon: React.ReactNode; label: string; value: number; delta: number; deltaLabel: string; isCurrency?: boolean; loading?: boolean; currency?: string; customValue?: React.ReactNode;
 }) {
   const cur = currency ?? "USD";
-  const formatted = isCurrency ? formatCurrency(value ?? 0, cur) : (value ?? 0).toLocaleString("es");
+  const formatted = customValue !== undefined ? customValue : (isCurrency ? formatCurrency(value ?? 0, cur) : (value ?? 0).toLocaleString("es"));
   const deltaColor = delta > 0 ? "#10b981" : delta < 0 ? "#ef4444" : "#6b7280";
   const DeltaIcon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
 
@@ -124,7 +143,11 @@ function KpiCard({ icon, label, value, delta, deltaLabel, isCurrency = false, lo
         <><Skeleton h={32} w="60%" /><Skeleton h={14} w="80%" /></>
       ) : (
         <>
-          <span style={{ fontSize: 28, fontWeight: 700, color: "var(--zk-text-primary)", lineHeight: 1 }}>{formatted}</span>
+          {typeof formatted === 'string' || typeof formatted === 'number' ? (
+            <span style={{ fontSize: 28, fontWeight: 700, color: "var(--zk-text-primary)", lineHeight: 1 }}>{formatted}</span>
+          ) : (
+            formatted
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <DeltaIcon style={{ width: 13, height: 13, color: deltaColor }} />
             <span style={{ fontSize: 12, color: deltaColor, fontWeight: 500 }}>
@@ -167,6 +190,7 @@ export default function DashboardPage() {
   const { data: attention } = useDashboardAttention(workspace?.id, rates, workspaceCurrency);
   const { data: activity } = useDashboardActivity(workspace?.id);
   const { data: tasksSummary } = useDashboardTasksSummary(workspace?.id);
+  const { data: teamTasks } = useDashboardTeamTasks(workspace?.id);
   const { data: allReminders, isLoading: remindersLoading } = useReminders();
   const updateReminder = useUpdateReminder();
 
@@ -254,6 +278,27 @@ export default function DashboardPage() {
           icon={<DollarSign className="h-4 w-4" />}
           label="Valor pipeline"
           value={metrics?.pipeline_value.total ?? 0}
+          customValue={
+            metrics?.pipeline_value_by_currency && Object.keys(metrics.pipeline_value_by_currency).length > 0
+              ? (() => {
+                  const entries = Object.entries(metrics.pipeline_value_by_currency).sort((a,b) => b[1] - a[1]);
+                  const main = entries[0];
+                  const rest = entries.slice(1);
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <span style={{ fontSize: 24, fontWeight: 700, color: "var(--zk-text-primary)", lineHeight: 1 }}>
+                        {formatMonto(main[1], main[0])} {main[0]}
+                      </span>
+                      {rest.length > 0 && (
+                        <span style={{ fontSize: 13, color: 'var(--zk-text-muted)', fontWeight: 500 }}>
+                          {rest.map(r => `${formatMonto(r[1], r[0])} ${r[0]}`).join('  ·  ')}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()
+              : undefined
+          }
           delta={metrics?.pipeline_value.delta ?? 0}
           deltaLabel="vs sem. pasada"
           isCurrency
@@ -364,46 +409,43 @@ export default function DashboardPage() {
           <div style={card}>
             <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--zk-border-subtle)", display: "flex", alignItems: "center", gap: 8 }}>
               <ListTodo style={{ width: 15, height: 15, color: ZK_RED }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--zk-text-primary)" }}>Mis tareas</span>
-              <button onClick={() => navigate("/tasks")} style={{ fontSize: 12, color: "var(--zk-text-muted)", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, marginLeft: "auto" }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = ZK_RED)}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--zk-text-muted)")}>
-                Ver todas <ArrowRight style={{ width: 12, height: 12 }} />
-              </button>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--zk-text-primary)" }}>Tareas de proyectos</span>
+              <button onClick={() => navigate("/tasks")} style={{ marginLeft: "auto", fontSize: 12, color: "var(--zk-text-muted)", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }} onMouseEnter={(e) => (e.currentTarget.style.color = "#E8193C")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--zk-text-muted)")}>Ver todas <ArrowRight style={{ width: 12, height: 12 }} /></button>
             </div>
-            {/* KPI mini row */}
-            {tasksSummary ? (
-              <>
-                <div style={{ display: "flex", padding: "10px 20px", gap: 0, borderBottom: "1px solid var(--zk-border-subtle)" }}>
-                  {[
-                    { label: "Pendientes", value: tasksSummary.tasks.pending_total, color: "var(--zk-text-muted)" },
-                    { label: "Hoy", value: tasksSummary.tasks.today, color: "#f59e0b" },
-                    { label: "Vencidas", value: tasksSummary.tasks.overdue, color: "#ef4444" },
-                    { label: "✓ Esta semana", value: tasksSummary.tasks.completed_this_week, color: "#10b981" },
-                  ].map((kpi, i) => (
-                    <div key={kpi.label} style={{ flex: 1, textAlign: "center", padding: "4px 0", borderRight: i < 3 ? "1px solid var(--zk-border-subtle)" : "none" }}>
-                      <p style={{ fontSize: 20, fontWeight: 700, color: kpi.color, margin: 0 }}>{kpi.value}</p>
-                      <p style={{ fontSize: 10, color: "var(--zk-text-disabled)", marginTop: 1 }}>{kpi.label}</p>
-                    </div>
-                  ))}
-                </div>
-                {tasksSummary.tasks.top_today.length === 0 ? (
-                  <p style={{ padding: "14px 20px", fontSize: 13, color: "var(--zk-text-disabled)" }}>Sin tareas pendientes</p>
-                ) : (
-                  tasksSummary.tasks.top_today.map((t: any, i: number) => (
-                    <div key={t.id} onClick={() => navigate("/tasks")}
-                      style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", borderBottom: i < tasksSummary.tasks.top_today.length - 1 ? "1px solid var(--zk-border-subtle)" : "none", cursor: "pointer" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--zk-bg-hover)")}
+            {teamTasks ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                {[
+                  { slot: "inma", label: "Inma", bg: "rgba(236,72,153,0.05)", border: "#EC4899", emoji: "🔴" },
+                  { slot: "gabi", label: "Gabi", bg: "rgba(217,119,6,0.05)", border: "#D97706", emoji: "🟡" },
+                  { slot: "fabri", label: "Fabri", bg: "rgba(22,163,74,0.05)", border: "#16A34A", emoji: "🟢" },
+                  { slot: "charly", label: "Charly", bg: "rgba(37,99,235,0.05)", border: "#2563EB", emoji: "🔵" },
+                  { slot: "global", label: "Global", bg: "rgba(107,114,128,0.05)", border: "#6B7280", emoji: "⚪" },
+                ].map((person, i) => {
+                  const count = (teamTasks as Record<string, number>)[person.slot] || 0
+                  
+                  return (
+                    <div key={person.slot} onClick={() => navigate(person.slot === 'global' ? '/tasks' : `/tasks?persona=${person.slot}`)}
+                      style={{ 
+                        display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", cursor: "pointer",
+                        borderBottom: i < 4 ? "1px solid var(--zk-border-subtle)" : "none",
+                        backgroundColor: "transparent", transition: "background-color 0.2s"
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = person.bg)}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#3b82f6", flexShrink: 0 }} />
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <p style={{ fontSize: 13, color: "var(--zk-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.text}</p>
-                        {t.contact_nombre && <p style={{ fontSize: 11, color: "var(--zk-text-muted)" }}>{t.contact_nombre}</p>}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 14 }}>{person.emoji}</span>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--zk-text-primary)" }}>{person.label}</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 13, color: "var(--zk-text-muted)" }}>
+                          {count} {count === 1 ? 'pendiente' : 'pendientes'}
+                        </span>
+                        <ArrowRight size={14} style={{ color: "var(--zk-text-disabled)" }} />
                       </div>
                     </div>
-                  ))
-                )}
-              </>
+                  )
+                })}
+              </div>
             ) : (
               <div style={{ padding: "12px 20px" }}><Skeleton h={14} /></div>
             )}
@@ -639,12 +681,13 @@ export default function DashboardPage() {
               {activityEvents.map((event: any, i: number) => (
                 <div key={`${event.entity_id}-${event.type}-${i}`}
                   style={{ display: "flex", gap: 12, padding: "10px 0", borderBottom: i < activityEvents.length - 1 ? "1px solid var(--zk-border-subtle)" : "none" }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: "var(--zk-bg-elevated)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    {EVENT_ICONS[event.type] ?? <Circle style={{ width: 12, height: 12, color: "var(--zk-text-disabled)" }} />}
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: "var(--zk-bg-elevated)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 14 }}>
+                    {ENTITY_ICONS[event.entity_type] ?? "⚡"}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, color: "var(--zk-text-dim)", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{event.label}</p>
-                    <p style={{ fontSize: 11, color: "var(--zk-text-disabled)", marginTop: 2 }}>{timeAgo(event.timestamp)}</p>
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                    <p style={{ fontSize: 13, color: "var(--zk-text-dim)", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <strong style={{ color: "var(--zk-text-primary)", fontWeight: 600 }}>{event.label}</strong> · {ACTION_LABELS[event.type] ?? event.type} · <span style={{ color: "var(--zk-text-disabled)" }}>{timeAgo(event.timestamp)}</span>
+                    </p>
                   </div>
                 </div>
               ))}

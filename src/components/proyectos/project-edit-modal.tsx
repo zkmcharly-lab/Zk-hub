@@ -32,7 +32,9 @@ export function ProjectEditModal({ isOpen, onClose, proyecto }: ProjectEditModal
     tipo: 'web',
     estado: 'activo',
     responsable: '',
-    fecha_entrega: ''
+    fecha_entrega: '',
+    logo_url: '',
+    banner_url: ''
   })
 
   useEffect(() => {
@@ -42,7 +44,9 @@ export function ProjectEditModal({ isOpen, onClose, proyecto }: ProjectEditModal
         tipo: proyecto.tipo || 'web',
         estado: proyecto.estado || 'activo',
         responsable: proyecto.responsable || '',
-        fecha_entrega: proyecto.fecha_entrega || ''
+        fecha_entrega: proyecto.fecha_entrega || '',
+        logo_url: proyecto.logo_url || '',
+        banner_url: proyecto.banner_url || ''
       })
     }
   }, [proyecto, isOpen])
@@ -60,7 +64,9 @@ export function ProjectEditModal({ isOpen, onClose, proyecto }: ProjectEditModal
         tipo: form.tipo,
         estado: form.estado as any,
         responsable: form.responsable || null,
-        fecha_entrega: form.fecha_entrega || null
+        fecha_entrega: form.fecha_entrega || null,
+        logo_url: form.logo_url || null,
+        banner_url: form.banner_url || null
       }
     }, {
       onSuccess: () => {
@@ -130,6 +136,16 @@ export function ProjectEditModal({ isOpen, onClose, proyecto }: ProjectEditModal
               <div>
                 <Lbl>Fecha estimada de entrega</Lbl>
                 <input type="date" value={form.fecha_entrega} onChange={(e) => setForm({ ...form, fecha_entrega: e.target.value })} style={inputStyle} />
+              </div>
+
+              <div>
+                <Lbl>URL del Logo</Lbl>
+                <input type="url" value={form.logo_url} onChange={(e) => setForm({ ...form, logo_url: e.target.value })} style={inputStyle} placeholder="https://..." />
+              </div>
+
+              <div>
+                <Lbl>URL del Banner</Lbl>
+                <input type="url" value={form.banner_url} onChange={(e) => setForm({ ...form, banner_url: e.target.value })} style={inputStyle} placeholder="https://..." />
               </div>
 
             </div>

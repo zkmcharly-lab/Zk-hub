@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useWorkspaceStore } from '@/lib/store'
+import { logActivity } from '@/lib/activity'
 
 export interface Contact {
   id: string
@@ -90,9 +91,12 @@ export function useCreateContact() {
       if (error) throw error
       return created as Contact
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['contacts', workspace?.id] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats', workspace?.id] })
+      if (workspace?.id) {
+        logActivity(workspace.id, 'contact_created', 'contact', created.id, created.nombre)
+      }
     },
   })
 }
@@ -116,6 +120,9 @@ export function useUpdateContact() {
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ['contacts', workspace?.id] })
       queryClient.invalidateQueries({ queryKey: ['contact', updated.id] })
+      if (workspace?.id) {
+        logActivity(workspace.id, 'contact_updated', 'contact', updated.id, updated.nombre)
+      }
     },
   })
 }

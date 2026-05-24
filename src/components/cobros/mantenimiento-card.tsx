@@ -4,6 +4,14 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Cobro } from '@/hooks/use-cobros'
 
 export function MantenimientoCard({ cobro, onRegistrarPago }: { cobro: Cobro; onRegistrarPago: () => void }) {
+  const formatMonto = (monto: number, moneda: string) => {
+    const code = moneda || 'USD';
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: code,
+      minimumFractionDigits: 0
+    }).format(monto)
+  }
   const isVencido = cobro.estado === 'vencido'
   const badgeClasses = isVencido 
     ? 'bg-red-50 text-red-600 border-red-100' 
@@ -32,7 +40,7 @@ export function MantenimientoCard({ cobro, onRegistrarPago }: { cobro: Cobro; on
         <div className="mb-4">
           <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Cuota Mensual</p>
           <p className="text-[18px] font-bold text-gray-900">
-            {formatCurrency(cobro.monto_total, cobro.moneda)} <span className="text-[12px] text-gray-400 font-normal">/mes</span>
+            {formatMonto((cobro.monto_total || 0) / (cobro.num_pagos || 1), cobro.moneda)} <span className="text-[12px] text-gray-400 font-normal">/mes</span>
           </p>
         </div>
         

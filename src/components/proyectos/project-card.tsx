@@ -23,45 +23,79 @@ export function ProjectCard({ proyecto }: { proyecto: Proyecto }) {
 
   const responsableObj = proyecto.responsable ? AVATARS[proyecto.responsable.toLowerCase()] : null
 
-  // Calcular tareas pendientes de la fase actual
+  // Calcular tareas pendientes de la fase actual y agrupar por persona
   const currentFase = proyecto.proyecto_fases?.find(f => f.numero_fase === proyecto.fase_actual)
-  const tareasPendientes = currentFase?.proyecto_tareas?.filter(t => t.estado !== 'completada').length || 0
+  const tareasPendientes = currentFase?.proyecto_tareas?.filter(t => t.estado !== 'completada') || []
+  
+  const pendientesPorPersona = tareasPendientes.reduce((acc, t) => {
+    const slot = t.responsable?.toLowerCase()
+    if (slot && AVATARS[slot]) {
+      acc[slot] = (acc[slot] || 0) + 1
+    }
+    return acc
+  }, {} as Record<string, number>)
 
   return (
-    <div className="rounded-[14px] border-[0.8px] border-gray-200 bg-white p-5 hover:border-gray-300 transition-colors flex flex-col justify-between h-full">
-      <div>
+    <Link 
+      href={`/proyectos/${proyecto.id}`}
+      className="block rounded-[12px] border border-gray-200 bg-white shadow-sm hover:shadow-md hover:border-gray-300 transition-all overflow-hidden relative group"
+    >
+      {/* Banner Superior */}
+      <div 
+        className="h-[60px] w-full bg-cover bg-center relative flex items-center px-4"
+        style={proyecto.banner_url ? { backgroundImage: `url(${proyecto.banner_url})` } : {
+          background: `linear-gradient(90deg, ${isEntregado ? '#d1fae5' : isPausado ? '#fef3c7' : '#f3f4f6'} 0%, ${isEntregado ? '#a7f3d0' : isPausado ? '#fde68a' : '#e5e7eb'} 100%)`
+        }}
+      >
+        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/5 transition-colors" />
+        
+        {/* Logo Circular Superpuesto */}
+        <div className="absolute -bottom-5 w-10 h-10 rounded-full border-2 border-white bg-white shadow-sm overflow-hidden flex items-center justify-center z-10">
+          {proyecto.logo_url ? (
+            <img src={proyecto.logo_url} alt="" className="w-full h-full object-contain" />
+          ) : (
+            <span className="text-[12px] font-bold text-gray-500 uppercase">
+              {proyecto.nombre.substring(0,2)}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="p-4 pt-8">
         <div className="flex justify-between items-start mb-4">
-          <div>
-            <h3 className="text-[15px] font-bold text-gray-900 mb-1">{proyecto.nombre}</h3>
+          <div className="flex-1 min-w-0 pr-4">
+            <h3 className="text-[14px] font-bold text-gray-900 truncate">
+              {proyecto.nombre}
+            </h3>
             {proyecto.contacts && (
-              <p className="text-[13px] text-gray-500 flex items-center gap-1.5 mb-3">
-                <User size={13} /> {proyecto.contacts.empresa || proyecto.contacts.nombre}
+              <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                {proyecto.contacts.nombre} {proyecto.contacts.empresa ? `· ${proyecto.contacts.empresa}` : ''}
               </p>
             )}
-
-            <div className="space-y-1.5 mt-4">
-              {responsableObj && (
-                <div className="flex items-center gap-2 text-[13px] text-gray-600">
-                  <div 
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-sm"
-                    style={{ backgroundColor: responsableObj.bg }}
-                  >
-                    {responsableObj.initials}
-                  </div>
-                  <span className="font-medium text-gray-900">{responsableObj.name}</span>
-                </div>
-              )}
-              {proyecto.fecha_entrega && (
-                <div className="flex items-center gap-2 text-[12px] text-gray-500">
-                  <Calendar size={13} />
-                  Entrega: {formatDate(proyecto.fecha_entrega)}
-                </div>
-              )}
-            </div>
           </div>
           <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold border capitalize ${badgeClasses}`}>
             {proyecto.estado}
           </span>
+        </div>
+
+        <div className="space-y-1.5 mt-2 mb-4">
+          {responsableObj && (
+            <div className="flex items-center gap-2 text-[13px] text-gray-600">
+              <div 
+                className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-sm"
+                style={{ backgroundColor: responsableObj.bg }}
+              >
+                {responsableObj.initials}
+              </div>
+              <span className="font-medium text-gray-900">{responsableObj.name}</span>
+            </div>
+          )}
+          {proyecto.fecha_entrega && (
+            <div className="flex items-center gap-2 text-[12px] text-gray-500">
+              <Calendar size={13} />
+              Entrega: {formatDate(proyecto.fecha_entrega)}
+            </div>
+          )}
         </div>
 
         {/* Fases (Progress) */}
@@ -71,10 +105,31 @@ export function ProjectCard({ proyecto }: { proyecto: Proyecto }) {
               <p className="text-[11px] font-bold text-gray-500 uppercase">
                 Fase {proyecto.fase_actual}: {NOMBRES_FASES[proyecto.fase_actual - 1]}
               </p>
+              
+              {/* Desglose de tareas pendientes por persona */}
+              {Object.keys(pendientesPorPersona).length > 0 && (
+                <div className="flex gap-1.5 mt-2">
+                  {Object.entries(pendientesPorPersona).map(([slot, count]) => {
+                    const avatar = AVATARS[slot]
+                    if (!avatar) return null
+                    return (
+                      <div key={slot} className="flex items-center gap-1 bg-gray-50 border border-gray-100 rounded-full pr-2 pl-0.5 py-0.5">
+                        <div 
+                          className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white"
+                          style={{ backgroundColor: avatar.bg }}
+                        >
+                          {avatar.initials}
+                        </div>
+                        <span className="text-[10px] font-bold text-gray-700">{count}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
             <div className="text-[11px] font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded flex items-center gap-1">
               <CheckSquare size={12} className="text-gray-500" />
-              {tareasPendientes} pend.
+              {tareasPendientes.length} pend.
             </div>
           </div>
           {/* Mini-barras por fase */}
@@ -96,14 +151,6 @@ export function ProjectCard({ proyecto }: { proyecto: Proyecto }) {
         </div>
       </div>
 
-      <div className="flex justify-end pt-3 border-t border-gray-100 mt-4">
-        <Link 
-          href={`/proyectos/${proyecto.id}`}
-          className="text-[13px] font-semibold text-[#E8193C] hover:text-[#C8102E]"
-        >
-          Ver detalle &rarr;
-        </Link>
-      </div>
-    </div>
+    </Link>
   )
 }

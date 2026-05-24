@@ -26,6 +26,13 @@ function isVencido(d: string | null) {
 }
 
 export function CobroPanel({ cobro, onClose }: { cobro: any; onClose: () => void }) {
+  const formatMonto = (monto: number, moneda: string) => {
+    const simbolos: Record<string, string> = {
+      'MXN': '$', 'USD': 'USD $', 'EUR': '€', 'ARS': '$'
+    }
+    return `${simbolos[moneda] ?? '$'}${monto.toLocaleString()}`
+  }
+
   const updateCobro = useUpdateCobro()
   const supabase = createClient()
   const queryClient = useQueryClient()
@@ -120,8 +127,30 @@ export function CobroPanel({ cobro, onClose }: { cobro: any; onClose: () => void
       
       if (error) throw error
       
-      await queryClient.invalidateQueries({ queryKey: ['cobros', workspace?.id] })
-      loadPagos()
+      // 2. Recargar TODAS las cuotas desde BD
+      const { data: pagosActualizados } = await supabase
+        .from('cobro_pagos')
+        .select('*')
+        .eq('cobro_id', cobro.id)
+      
+      setPagos(pagosActualizados || [])
+      
+      // 3. Verificar con datos REALES de BD
+      const todasPagadas = pagosActualizados?.every(
+        p => p.estado === 'pagado'
+      ) ?? false
+      
+      if (todasPagadas) {
+        await supabase.from('cobros')
+          .update({ estado: 'completado' })
+          .eq('id', cobro.id)
+      } else if (cobro.estado === 'completado' && !todasPagadas) {
+        await supabase.from('cobros')
+          .update({ estado: 'activo' })
+          .eq('id', cobro.id)
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['cobros', workspace?.id] })
     } catch (err) {
       console.error(err)
       alert('Error al actualizar pago')
@@ -167,7 +196,7 @@ export function CobroPanel({ cobro, onClose }: { cobro: any; onClose: () => void
             <div style={{ fontSize: 12, color: 'var(--zk-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Deal vinculado</div>
             <div style={{ fontWeight: 600, color: 'var(--zk-text-primary)', fontSize: 15 }}>{cobro.deals?.titulo ?? cobro.deal?.titulo ?? `Deal ID: ${cobro.deal_id.substring(0,8)}`}</div>
             <div style={{ fontSize: 13, color: '#0ea5e9', fontWeight: 700, marginTop: 2 }}>
-              {formatCurrency(cobro.monto_total, cobro.moneda)}
+              {formatMonto(cobro.monto_total, cobro.moneda)}
             </div>
           </div>
         )}
@@ -281,7 +310,7 @@ export function CobroPanel({ cobro, onClose }: { cobro: any; onClose: () => void
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--zk-text-primary)' }}>
-                        {formatCurrency(pago.monto, cobro.moneda)}
+                        {formatMonto(pago.monto, cobro.moneda)}
                       </div>
                       {pago.estado !== 'pagado' ? (
                         <button onClick={() => markPago(pago.id, 'pagado')} title="Marcar como pagado" style={{ width: 28, height: 28, borderRadius: '50%', border: '1.5px solid var(--zk-border)', background: 'var(--zk-bg-surface)', color: 'var(--zk-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

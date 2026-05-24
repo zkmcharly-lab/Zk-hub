@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useWorkspaceStore } from '@/lib/store'
+import { logActivity } from '@/lib/activity'
 
 export interface CobroPago {
   id: string
@@ -24,7 +25,7 @@ export interface Cobro {
   metodo_pago: string
   fecha_primer_pago: string | null
   frecuencia: string
-  tipo: 'desarrollo' | 'mantenimiento'
+  tipo: 'desarrollo' | 'mantenimiento' | 'servicio'
   estado: string
   notas: string | null
   created_at: string
@@ -98,8 +99,12 @@ export function useCreateCobro() {
 
       return created as Cobro
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['cobros', workspace?.id] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats', workspace?.id] })
+      if (workspace?.id && created?.id) {
+        logActivity(workspace.id, 'cobro_created', 'cobro', created.id, 'Nuevo cobro')
+      }
     },
   })
 }

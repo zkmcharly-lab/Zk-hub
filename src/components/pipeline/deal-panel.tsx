@@ -34,6 +34,10 @@ export function DealPanel({ dealId, onClose, onEdit }: { dealId: string; onClose
   const [descValue, setDescValue] = useState('')
   const descRef = useRef<HTMLTextAreaElement>(null)
 
+  const [isEditingNotas, setIsEditingNotas] = useState(false)
+  const [notasValue, setNotasValue] = useState('')
+  const notasRef = useRef<HTMLTextAreaElement>(null)
+
   const [isEditFormOpen, setIsEditFormOpen] = useState(false)
   const [editForm, setEditForm] = useState({
     titulo: '', valor: '', stage_id: '', fecha_cierre: '', prioridad: 'normal',
@@ -61,6 +65,7 @@ export function DealPanel({ dealId, onClose, onEdit }: { dealId: string; onClose
   useEffect(() => {
     if (deal) {
       setDescValue(deal.descripcion ?? '')
+      setNotasValue(deal.notas ?? '')
       setEditForm({
         titulo: deal.titulo,
         valor: deal.valor.toString(),
@@ -75,11 +80,22 @@ export function DealPanel({ dealId, onClose, onEdit }: { dealId: string; onClose
     if (isEditingDesc && descRef.current) descRef.current.focus()
   }, [isEditingDesc])
 
+  useEffect(() => {
+    if (isEditingNotas && notasRef.current) notasRef.current.focus()
+  }, [isEditingNotas])
+
   const saveDesc = () => {
     const trimmed = descValue.trim()
     setIsEditingDesc(false)
     if (trimmed === (deal?.descripcion ?? '')) return
     updateDeal.mutate({ id: dealId, data: { descripcion: trimmed || null } })
+  }
+
+  const saveNotas = () => {
+    const trimmed = notasValue.trim()
+    setIsEditingNotas(false)
+    if (trimmed === (deal?.notas ?? '')) return
+    updateDeal.mutate({ id: dealId, data: { notas: trimmed || null } })
   }
 
   const saveEditForm = () => {
@@ -276,6 +292,31 @@ export function DealPanel({ dealId, onClose, onEdit }: { dealId: string; onClose
               <p onClick={() => setIsEditingDesc(true)} style={{ fontSize: 13, color: deal.descripcion ? '#374151' : '#6b7280', lineHeight: 1.6, cursor: 'text', whiteSpace: 'pre-wrap', margin: 0 }}>
                 {deal.descripcion || 'Sin descripción'}
               </p>
+            )}
+          </section>
+
+          <Divider />
+
+          {/* Notas del equipo */}
+          <section>
+            <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'space-between', marginBottom: 8 }}>
+              <SectionLabel>Notas del equipo</SectionLabel>
+              <div style={{ flex: 1 }} />
+              {!isEditingNotas && (
+                <button onClick={() => setIsEditingNotas(true)} style={{ color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: -10 }}>
+                  <Pencil size={14} />
+                </button>
+              )}
+            </div>
+            {isEditingNotas ? (
+              <div>
+                <textarea ref={notasRef} value={notasValue} onChange={(e) => setNotasValue(e.target.value)} onBlur={saveNotas} onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveNotas() }}
+                  rows={4} placeholder="Agregar notas internas..." style={{ ...inputStyle, resize: 'none', lineHeight: 1.5, backgroundColor: 'rgba(251, 191, 36, 0.1)', borderColor: 'rgba(251, 191, 36, 0.3)' }} />
+              </div>
+            ) : (
+              <div onClick={() => setIsEditingNotas(true)} style={{ fontSize: 13, color: deal.notas ? '#0f172a' : '#6b7280', lineHeight: 1.6, cursor: 'text', whiteSpace: 'pre-wrap', margin: 0, padding: deal.notas ? 12 : 0, backgroundColor: deal.notas ? 'rgba(251, 191, 36, 0.1)' : 'transparent', borderRadius: 8, border: deal.notas ? '1px solid rgba(251, 191, 36, 0.3)' : 'none' }}>
+                {deal.notas || 'Sin notas del equipo'}
+              </div>
             )}
           </section>
 

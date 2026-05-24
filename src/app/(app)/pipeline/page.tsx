@@ -4,6 +4,7 @@ import { usePipeline, useCreateDeal, useUpdateDeal } from '@/hooks/use-deals'
 import { createClient } from '@/lib/supabase/client'
 import { useQueryClient } from '@tanstack/react-query'
 import { useWorkspaceStore } from '@/lib/store'
+import { logActivity } from '@/lib/activity'
 import { formatCurrency, avatarColor, initials, formatDate } from '@/lib/utils'
 import { Plus, Loader2, AlertTriangle } from 'lucide-react'
 import { DealFormModal } from '@/components/pipeline/deal-form-modal'
@@ -15,6 +16,15 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+
+const formatMonto = (monto: number, moneda: string) => {
+  const code = moneda || 'USD';
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: code,
+    minimumFractionDigits: 0
+  }).format(monto)
+}
 
 function DealCard({ deal, overlay, onClick }: { deal: any; overlay?: boolean; onClick?: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: deal.id })
@@ -45,7 +55,7 @@ function DealCard({ deal, overlay, onClick }: { deal: any; overlay?: boolean; on
       </div>
       {deal.valor > 0 && (
         <p style={{ fontSize: 13, fontWeight: 600, color: '#E8193C', marginTop: 6 }}>
-          {formatCurrency(deal.valor, deal.currency)}
+          {formatMonto(deal.valor, deal.currency)}
         </p>
       )}
       {deal.contact && (
@@ -70,11 +80,17 @@ function DealCard({ deal, overlay, onClick }: { deal: any; overlay?: boolean; on
 
 function KanbanColumn({ stage, deals, onAddDeal, onDealClick }: { stage: any; deals: any[]; onAddDeal: (stageId: string) => void; onDealClick: (deal: any) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id })
-  const totalValor = deals.reduce((s, d) => s + (d.valor ?? 0), 0)
+  
+  const totalsByCurrency = deals.reduce((acc, deal) => {
+    const currency = deal.currency || 'USD';
+    acc[currency] = (acc[currency] || 0) + (deal.valor || 0);
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', minWidth: 280, maxWidth: 280, flexShrink: 0,
+      height: 'calc(100vh - 180px)'
     }}>
       {/* Column header */}
       <div style={{
@@ -86,9 +102,9 @@ function KanbanColumn({ stage, deals, onAddDeal, onDealClick }: { stage: any; de
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--zk-text-primary)', flex: 1 }}>{stage.nombre}</p>
         <span style={{ fontSize: 11, color: 'var(--zk-text-muted)', fontWeight: 500 }}>{deals.length}</span>
       </div>
-      {totalValor > 0 && (
+      {Object.keys(totalsByCurrency).length > 0 && (
         <p style={{ fontSize: 11.5, color: stage.color, fontWeight: 600, marginBottom: 10, paddingLeft: 4 }}>
-          {formatCurrency(totalValor)}
+          {Object.entries(totalsByCurrency).map(([moneda, monto]) => formatMonto(monto as number, moneda)).join(' · ')}
         </p>
       )}
 
@@ -98,7 +114,7 @@ function KanbanColumn({ stage, deals, onAddDeal, onDealClick }: { stage: any; de
           ref={setNodeRef}
           style={{ 
             display: 'flex', flexDirection: 'column', gap: 8, 
-            flex: 1, minHeight: 100,
+            flex: 1, minHeight: 100, overflowY: 'auto',
             backgroundColor: isOver ? 'rgba(232,25,60,0.04)' : 'transparent',
             borderRadius: 8,
             transition: 'background-color 150ms'
@@ -137,6 +153,8 @@ export default function PipelinePage() {
   const [selectedDeal, setSelectedDeal] = useState<any | null>(null)
   const [cobroSetupOpen, setCobroSetupOpen] = useState(false)
   const [cobroSetupDeal, setCobroSetupDeal] = useState<any | null>(null)
+  const [search, setSearch] = useState('')
+  const { workspace } = useWorkspaceStore()
 
   const supabase = createClient()
   const queryClient = useQueryClient()
@@ -167,6 +185,10 @@ export default function PipelinePage() {
       .eq('id', active.id as string)
 
     queryClient.invalidateQueries({ queryKey: ['pipeline'] })
+
+    if (workspace?.id) {
+      logActivity(workspace.id, 'deal_stage_changed', 'deal', active.id as string, `Movido a ${targetStage.nombre}`)
+    }
     
     if (targetStage.nombre === 'En cobro') {
       const dealToSetup = pipeline?.stages
@@ -185,7 +207,11 @@ export default function PipelinePage() {
     </div>
   )
 
-  const totalValor = pipeline?.deals?.reduce((s, d) => s + (d.valor ?? 0), 0) ?? 0
+  const totalsByCurrencyHeader = pipeline?.deals?.reduce((acc, deal) => {
+    const currency = deal.currency || 'USD';
+    acc[currency] = (acc[currency] || 0) + (deal.valor || 0);
+    return acc;
+  }, {} as Record<string, number>) || {};
 
   return (
     <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
@@ -199,9 +225,30 @@ export default function PipelinePage() {
         <div style={{ flex: 1 }}>
           <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--zk-text-primary)' }}>Pipeline</h1>
           <p style={{ fontSize: 12.5, color: 'var(--zk-text-muted)', marginTop: 2 }}>
-            {pipeline?.deals?.length ?? 0} deals · {formatCurrency(totalValor)}
+            {pipeline?.deals?.length ?? 0} deals · {Object.keys(totalsByCurrencyHeader).length > 0 ? Object.entries(totalsByCurrencyHeader).map(([moneda, monto]) => formatMonto(monto as number, moneda)).join(' · ') : formatMonto(0, 'USD')}
           </p>
         </div>
+
+        {/* Search */}
+        <div style={{ position: 'relative', flex: 1, maxWidth: 300 }}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar..."
+            style={{
+              padding: '7px 12px',
+              border: '0.8px solid rgb(229,231,235)',
+              borderRadius: 8,
+              fontSize: 13,
+              outline: 'none',
+              width: 220,
+              boxSizing: 'border-box'
+            }}
+          />
+        </div>
+
+        <div style={{ flex: 1 }} />
+
         <button style={{
           display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px',
           backgroundColor: '#E8193C', color: '#fff', border: 'none', borderRadius: 8,
@@ -216,18 +263,25 @@ export default function PipelinePage() {
       </div>
 
       {/* Board */}
-      <div style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden', padding: '24px 28px' }}>
+      <div style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden', padding: '24px 28px', height: 'calc(100vh - 120px)', display: 'flex', alignItems: 'flex-start' }}>
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div style={{ display: 'flex', gap: 16, height: '100%', alignItems: 'flex-start' }}>
-            {pipeline?.stages?.map((stage) => (
-              <KanbanColumn
-                key={stage.id}
-                stage={stage}
-                deals={stage.deals ?? []}
-                onAddDeal={(stageId) => setDealModalStage(stageId)}
-                onDealClick={(deal) => setSelectedDeal(deal)}
-              />
-            ))}
+          <div style={{ display: 'flex', gap: 16, height: '100%', alignItems: 'flex-start', minWidth: 'max-content' }}>
+            {pipeline?.stages?.map((stage) => {
+              const filteredDeals = (stage.deals ?? []).filter(d => {
+                if (!search.trim()) return true
+                const s = search.toLowerCase()
+                return d.titulo?.toLowerCase().includes(s) || d.contact?.nombre?.toLowerCase().includes(s)
+              })
+              return (
+                <KanbanColumn
+                  key={stage.id}
+                  stage={stage}
+                  deals={filteredDeals}
+                  onAddDeal={(stageId) => setDealModalStage(stageId)}
+                  onDealClick={(deal) => setSelectedDeal(deal)}
+                />
+              )
+            })}
           </div>
           <DragOverlay dropAnimation={null}>
             {activeDeal && <DealCard deal={activeDeal} overlay />}

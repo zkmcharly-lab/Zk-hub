@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
+import { useWorkspaceStore } from '@/lib/store'
 import { useContact, useUpdateContact, useDeleteContact } from '@/hooks/use-contacts'
 import { useContactNotes, useAddContactNote, useDeleteContactNote } from '@/hooks/use-contact-notes'
 import { useReminders, useCreateReminder, useUpdateReminder, useDeleteReminder } from '@/hooks/use-reminders'
 import { useAuthStore } from '@/lib/store'
 import { formatCurrency, avatarColor, initials, relativeTime } from '@/lib/utils'
 import { COUNTRY_LIST } from '@/utils/locations'
-import { X, Pencil, Loader2, Mail, Phone, Building2, Calendar, Trash2, Plus, SendHorizonal, MessageSquare, MapPin, ExternalLink, Globe, TrendingUp, Bell, CheckCircle2, Circle } from 'lucide-react'
+import { X, Pencil, Loader2, Mail, Phone, Building2, Calendar, Trash2, Plus, SendHorizonal, MessageSquare, MapPin, ExternalLink, Globe, TrendingUp, Bell, CheckCircle2, Circle, BadgeCheck } from 'lucide-react'
 
 // Contact panel component
 interface ContactPanelProps {
@@ -36,6 +38,7 @@ export function ContactPanel({ contactId, onClose, onEdit, onAddDeal, isNewConta
   const router = useRouter()
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
+  const { workspace } = useWorkspaceStore()
 
   const { data: contact, isLoading } = useContact(contactId)
   const updateContact = useUpdateContact()
@@ -58,6 +61,88 @@ export function ContactPanel({ contactId, onClose, onEdit, onAddDeal, isNewConta
   const [noteText, setNoteText] = useState('')
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Estado "Marcar como cliente"
+  const [isCliente, setIsCliente] = useState(false)
+  const [marcandoCliente, setMarcandoCliente] = useState(false)
+
+  // Check si ya es cliente al cargar
+  useEffect(() => {
+    if (!workspace?.id || !contactId) return
+    const supabase = createClient()
+    supabase
+      .from('contact_list_members')
+      .select('id, contact_lists(nombre)')
+      .eq('contact_id', contactId)
+      .then(({ data }) => {
+        const lists = data?.map((m: any) => m.contact_lists?.nombre) ?? []
+        setIsCliente(lists.includes('Clientes ZK'))
+      })
+  }, [contactId, workspace?.id])
+
+  const handleMarcarComoCliente = async () => {
+    if (!workspace?.id || isCliente) return
+    setMarcandoCliente(true)
+    try {
+      const supabase = createClient()
+      // 1. Buscar o crear CARPETA "Clientes ZK"
+      let { data: carpeta } = await supabase
+        .from('contact_folders')
+        .select('id')
+        .eq('workspace_id', workspace.id)
+        .eq('nombre', 'Clientes ZK')
+        .maybeSingle()
+      
+      if (!carpeta) {
+        const { data: nueva } = await supabase
+          .from('contact_folders')
+          .insert({ 
+            workspace_id: workspace.id, 
+            nombre: 'Clientes ZK',
+            color: '#10b981',
+            order_index: 99
+          })
+          .select('id').single()
+        carpeta = nueva
+      }
+
+      // 2. Buscar o crear LISTA "Clientes ZK" para segmentación
+      let { data: lista } = await supabase
+        .from('contact_lists')
+        .select('id')
+        .eq('workspace_id', workspace.id)
+        .eq('nombre', 'Clientes ZK')
+        .maybeSingle()
+
+      if (!lista) {
+        const { data: created } = await supabase
+          .from('contact_lists')
+          .insert({ workspace_id: workspace.id, nombre: 'Clientes ZK' })
+          .select('id')
+          .single()
+        lista = created
+      }
+
+      if (lista?.id) {
+        await supabase
+          .from('contact_list_members')
+          .upsert({ list_id: lista.id, contact_id: contactId }, { onConflict: 'list_id,contact_id' })
+        
+        // NO cambiar folder_id original, solo temperatura
+        await supabase
+          .from('contacts')
+          .update({ temperatura: null })
+          .eq('id', contactId)
+
+        setIsCliente(true)
+        queryClient.invalidateQueries({ queryKey: ['contacts'] })
+        queryClient.invalidateQueries({ queryKey: ['contact_folders'] })
+        queryClient.invalidateQueries({ queryKey: ['contact_list_members'] })
+      }
+    } finally {
+      setMarcandoCliente(false)
+    }
+  }
 
   // Esc to close
   useEffect(() => {
@@ -139,6 +224,34 @@ export function ContactPanel({ contactId, onClose, onEdit, onAddDeal, isNewConta
             </div>
             
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              {/* Marcar como cliente / badge cliente */}
+              {isCliente ? (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  backgroundColor: 'rgba(22,163,74,0.12)', color: '#16A34A',
+                  border: '1px solid rgba(22,163,74,0.3)', borderRadius: 9999,
+                  padding: '3px 10px', fontSize: 11, fontWeight: 700
+                }}>
+                  ✓ Cliente
+                </span>
+              ) : (
+                <button
+                  onClick={handleMarcarComoCliente}
+                  disabled={marcandoCliente}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    backgroundColor: 'rgba(22,163,74,0.1)', color: '#16A34A',
+                    border: '1px solid rgba(22,163,74,0.3)', borderRadius: 9999,
+                    padding: '3px 10px', fontSize: 11, fontWeight: 600,
+                    cursor: 'pointer', transition: 'all 120ms'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(22,163,74,0.2)' }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'rgba(22,163,74,0.1)' }}
+                >
+                  {marcandoCliente ? <Loader2 size={11} className="animate-spin" /> : '✓'}
+                  Marcar como cliente
+                </button>
+              )}
               {/* Temperatura switch */}
               {(() => {
                 const t = contact.temperatura || 'frio'

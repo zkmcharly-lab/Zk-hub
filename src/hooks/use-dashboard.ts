@@ -36,6 +36,13 @@ export function useDashboardMetrics(workspaceId?: string, rates?: Record<string,
       // Frios
       const frios = contactsData.filter(c => c.folder_id === 'cold') // Simplified
 
+      const pipelineByCurrency = dealsData.reduce((acc, d) => {
+        const val = parseFloat(d.valor || '0')
+        const curr = d.currency || 'USD'
+        acc[curr] = (acc[curr] || 0) + val
+        return acc
+      }, {} as Record<string, number>)
+
       return {
         contacts: {
           total: contactsData.length,
@@ -55,6 +62,7 @@ export function useDashboardMetrics(workspaceId?: string, rates?: Record<string,
           last_week: pipelineLastWeek,
           delta: pipelineTotal - pipelineLastWeek,
         },
+        pipeline_value_by_currency: pipelineByCurrency,
         deals_won: {
           this_month: 0,
           last_month: 0,
@@ -216,16 +224,62 @@ export function useDashboardTasksSummary(workspaceId?: string) {
       const pending = (tasks || []).filter(t => !t.done)
       const todayDate = new Date().toISOString().split('T')[0]
 
+      // Agrupar por assignee_slot
+      const byPerson = pending.reduce((acc, t) => {
+        const slot = t.assignee_slot?.toLowerCase() || 'unassigned'
+        acc[slot] = (acc[slot] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
+
       return {
         tasks: {
           overdue: pending.filter(t => t.due_date && t.due_date < todayDate).length,
           today: pending.filter(t => t.due_date === todayDate).length,
           pending_total: pending.length,
           completed_this_week: 0,
-          top_today: pending.slice(0, 5).map(t => ({ id: t.id, text: t.text, due_date: t.due_date }))
+          top_today: pending.slice(0, 5).map(t => ({ id: t.id, text: t.text, due_date: t.due_date })),
+          by_person: byPerson
         },
         upcoming_events: []
       }
+    },
+    enabled: !!workspaceId,
+  })
+}
+
+export function useDashboardTeamTasks(workspaceId?: string) {
+  const supabase = createClient()
+  return useQuery({
+    queryKey: ['dashboard-team-tasks', workspaceId],
+    queryFn: async () => {
+      if (!workspaceId) throw new Error('No workspace')
+      
+      const { data: tareas } = await supabase
+        .from('proyecto_tareas')
+        .select('responsable')
+        .eq('workspace_id', workspaceId)
+        .neq('estado', 'completada')
+        
+      const pending = tareas || []
+      
+      const counts: Record<string, number> = {
+        charly: 0,
+        inma: 0,
+        fabri: 0,
+        gabi: 0,
+        global: 0
+      }
+      
+      for (const t of pending) {
+        const resp = t.responsable?.toLowerCase()
+        if (resp && counts[resp] !== undefined) {
+          counts[resp]++
+        } else {
+          counts.global++
+        }
+      }
+      
+      return counts
     },
     enabled: !!workspaceId,
   })

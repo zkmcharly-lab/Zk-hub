@@ -1,5 +1,7 @@
 'use client'
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
 import { useContacts } from '@/hooks/use-contacts'
 import { useWorkspaceStore } from '@/lib/store'
 import { avatarColor, initials, relativeTime } from '@/lib/utils'
@@ -7,6 +9,7 @@ import { Search, Plus, Users, Flame, Wind, Sun, Loader2, Download } from 'lucide
 import { ContactFormModal } from '@/components/contacts/contact-form-modal'
 import { ContactPanel } from '@/components/contacts/contact-panel'
 import { CreateFolderModal } from '@/components/contacts/create-folder-modal'
+import { ImportCsvModal } from '@/components/contacts/import-csv-modal'
 import { useContactFolders } from '@/hooks/use-contact-folders'
 import { Folder } from 'lucide-react'
 
@@ -21,16 +24,40 @@ export default function ContactsPage() {
   const [tempFilter, setTempFilter] = useState<string | null>(null)
   const [folderFilter, setFolderFilter] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [editingContactId, setEditingContactId] = useState<string | undefined>(undefined)
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false)
   const [selectedContact, setSelectedContact] = useState<any | null>(null)
   
+  const { workspace } = useWorkspaceStore()
   const { data: contacts, isLoading } = useContacts({ search })
   const { data: folders, isLoading: foldersLoading } = useContactFolders()
+  
+  // Custom query para members de Clientes ZK (o cualquier lista)
+  const { data: listMembers } = useQuery({
+    queryKey: ['contact_list_members', workspace?.id],
+    queryFn: async () => {
+      const supabase = createClient()
+      const { data } = await supabase.from('contact_list_members').select('contact_id, contact_lists!inner(id, nombre)').eq('contact_lists.workspace_id', workspace!.id)
+      return data || []
+    },
+    enabled: !!workspace?.id,
+  })
 
   const filtered = contacts?.filter((c) => {
     if (tempFilter && c.temperatura !== tempFilter) return false
-    if (folderFilter && c.folder_id !== folderFilter) return false
+    
+    if (folderFilter) {
+      const isFolderClientesZK = folders?.find(f => f.id === folderFilter)?.nombre === 'Clientes ZK'
+      if (isFolderClientesZK) {
+        // Si el folder seleccionado es "Clientes ZK", verificar si está en la lista "Clientes ZK"
+        const inList = listMembers?.some(m => m.contact_id === c.id && (m.contact_lists as any)?.nombre === 'Clientes ZK')
+        if (!inList) return false
+      } else {
+        if (c.folder_id !== folderFilter) return false
+      }
+    }
+    
     return true
   }) ?? []
 
@@ -40,7 +67,11 @@ export default function ContactsPage() {
     tibio: contacts?.filter(c => c.temperatura === 'tibio').length ?? 0,
     caliente: contacts?.filter(c => c.temperatura === 'caliente').length ?? 0,
     folders: folders?.reduce((acc, f) => {
-      acc[f.id] = contacts?.filter(c => c.folder_id === f.id).length ?? 0
+      if (f.nombre === 'Clientes ZK') {
+        acc[f.id] = listMembers?.filter(m => (m.contact_lists as any)?.nombre === 'Clientes ZK' && contacts?.find(c => c.id === m.contact_id)).length ?? 0
+      } else {
+        acc[f.id] = contacts?.filter(c => c.folder_id === f.id).length ?? 0
+      }
       return acc
     }, {} as Record<string, number>) ?? {}
   }
@@ -228,6 +259,18 @@ export default function ContactsPage() {
           
           <button style={{
             display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px',
+            backgroundColor: 'transparent', color: 'var(--zk-text-secondary)', border: '1px solid var(--zk-border)', borderRadius: 8,
+            fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+          }}
+            onClick={() => setIsImportModalOpen(true)}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--zk-bg-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <Download size={14} /> Importar CSV
+          </button>
+          
+          <button style={{
+            display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px',
             backgroundColor: '#E8193C', color: '#fff', border: 'none', borderRadius: 8,
             fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
           }}
@@ -331,6 +374,7 @@ export default function ContactsPage() {
         />
       )}
       <ContactFormModal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingContactId(undefined); }} contactId={editingContactId} />
+      <ImportCsvModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} />
       <CreateFolderModal isOpen={isFolderModalOpen} onClose={() => setIsFolderModalOpen(false)} />
     </div>
   )
