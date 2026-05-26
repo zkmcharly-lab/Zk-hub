@@ -7,10 +7,12 @@ import { formatDate } from '@/lib/utils'
 
 const NOMBRES_FASES = ['Diagnóstico', 'Diseño', 'Build', 'Validación', 'Entrega', 'Soporte']
 
-const AVATARS: Record<string, { initials: string; bg: string; name: string }> = {
-  charly: { initials: 'CH', bg: '#E8193C', name: 'Charly' },
+const AVATARS: Record<string, { initials: string; bg: string; name: string; text?: string }> = {
+  charly: { initials: 'CH', bg: '#2563EB', name: 'Charly' },
   inma: { initials: 'IN', bg: '#EC4899', name: 'Inma' },
-  fabri: { initials: 'FA', bg: '#16A34A', name: 'Fabri' },
+  fabri: { initials: 'FA', bg: '#10B981', name: 'Fabri' },
+  gabi: { initials: 'GA', bg: '#FBBF24', name: 'Gaby', text: '#0F172A' },
+  gaby: { initials: 'GA', bg: '#FBBF24', name: 'Gaby', text: '#0F172A' },
 }
 
 export function ProjectCard({ proyecto }: { proyecto: Proyecto }) {
@@ -23,14 +25,15 @@ export function ProjectCard({ proyecto }: { proyecto: Proyecto }) {
 
   const responsableObj = proyecto.responsable ? AVATARS[proyecto.responsable.toLowerCase()] : null
 
-  // Calcular tareas pendientes de la fase actual y agrupar por persona
-  const currentFase = proyecto.proyecto_fases?.find(f => f.numero_fase === proyecto.fase_actual)
-  const tareasPendientes = currentFase?.proyecto_tareas?.filter(t => t.estado !== 'completada') || []
+  // Calcular TODAS las tareas pendientes del proyecto (sin filtrar por fase)
+  const todasTareas = proyecto.proyecto_fases?.flatMap((f: any) => f.proyecto_tareas || []) || []
+  const tareasPendientes = todasTareas.filter((t: any) => t.estado !== 'completada')
   
-  const pendientesPorPersona = tareasPendientes.reduce((acc, t) => {
+  const pendientesPorPersona = tareasPendientes.reduce((acc: Record<string, number>, t: any) => {
     const slot = t.responsable?.toLowerCase()
-    if (slot && AVATARS[slot]) {
-      acc[slot] = (acc[slot] || 0) + 1
+    if (slot && (AVATARS[slot] || slot === 'gaby')) {
+      const key = slot === 'gaby' ? 'gabi' : slot
+      acc[key] = (acc[key] || 0) + 1
     }
     return acc
   }, {} as Record<string, number>)
@@ -82,8 +85,8 @@ export function ProjectCard({ proyecto }: { proyecto: Proyecto }) {
           {responsableObj && (
             <div className="flex items-center gap-2 text-[13px] text-gray-600">
               <div 
-                className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-sm"
-                style={{ backgroundColor: responsableObj.bg }}
+                className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shadow-sm"
+                style={{ backgroundColor: responsableObj.bg, color: responsableObj.text || 'white' }}
               >
                 {responsableObj.initials}
               </div>
@@ -115,12 +118,12 @@ export function ProjectCard({ proyecto }: { proyecto: Proyecto }) {
                     return (
                       <div key={slot} className="flex items-center gap-1 bg-gray-50 border border-gray-100 rounded-full pr-2 pl-0.5 py-0.5">
                         <div 
-                          className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white"
-                          style={{ backgroundColor: avatar.bg }}
+                          className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold"
+                          style={{ backgroundColor: avatar.bg, color: avatar.text || 'white' }}
                         >
                           {avatar.initials}
                         </div>
-                        <span className="text-[10px] font-bold text-gray-700">{count}</span>
+                        <span className="text-[10px] font-bold text-gray-700">[{avatar.initials} {count}]</span>
                       </div>
                     )
                   })}

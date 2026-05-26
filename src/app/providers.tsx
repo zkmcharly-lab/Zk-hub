@@ -2,6 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { SessionInitializer } from '@/components/layout/session-initializer'
+import { Toaster } from 'sonner'
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -13,8 +14,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <SessionInitializer>
         {children}
+        <Toaster richColors position="top-right" />
       </SessionInitializer>
     </QueryClientProvider>
   )
 }
+
 

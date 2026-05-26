@@ -26,6 +26,20 @@ interface ContactFormModalProps {
   isOpen: boolean
   onClose: () => void
   contactId?: string
+  initialValues?: Partial<{
+    nombre: string
+    email: string | null
+    telefono: string | null
+    empresa: string | null
+    sitio_web: string | null
+    maps_url: string | null
+    instagram_url: string | null
+    facebook_url: string | null
+    pais: string | null
+    region: string | null
+    nicho: string | null
+    folder_id: string | null
+  }>
   onCreated?: (contact: any) => void
 }
 
@@ -54,7 +68,7 @@ function SectionSep({ label }: { label: string }) {
   )
 }
 
-export function ContactFormModal({ isOpen, onClose, contactId, onCreated }: ContactFormModalProps) {
+export function ContactFormModal({ isOpen, onClose, contactId, initialValues, onCreated }: ContactFormModalProps) {
   const isEditing = !!contactId
   const { data: existingContact, isLoading } = useContact(contactId ?? null)
   const { data: folders } = useContactFolders()
@@ -105,14 +119,33 @@ export function ContactFormModal({ isOpen, onClose, contactId, onCreated }: Cont
     
     if (isOpen && !existingContact && !isEditing) {
       setForm({
-        nombre: '', email: '', telefono: '', empresa: '', sitio_web: '',
-        notas: '', dato_relevante: '', etiquetas: [],
-        pais: '', region: '', maps_url: '', facebook_url: '', instagram_url: '',
-        temperatura: 'frio', nicho: '', preferred_currency: 'USD', folder_id: '',
+        nombre: initialValues?.nombre ?? '',
+        email: initialValues?.email ?? '',
+        telefono: initialValues?.telefono ?? '',
+        empresa: initialValues?.empresa ?? '',
+        sitio_web: initialValues?.sitio_web ?? '',
+        notas: '',
+        dato_relevante: '',
+        etiquetas: [],
+        pais: initialValues?.pais ?? '',
+        region: initialValues?.region ?? '',
+        maps_url: initialValues?.maps_url ?? '',
+        facebook_url: initialValues?.facebook_url ?? '',
+        instagram_url: initialValues?.instagram_url ?? '',
+        temperatura: 'frio',
+        nicho: initialValues?.nicho ?? '',
+        preferred_currency: 'USD',
+        folder_id: initialValues?.folder_id ?? '',
       })
-      setSelectedNicho('')
+      
+      const initialNicho = initialValues?.nicho ?? ''
+      if (initialNicho && !SECTORES.includes(initialNicho) && initialNicho !== 'Otro') {
+        setSelectedNicho('Otro')
+      } else {
+        setSelectedNicho(initialNicho)
+      }
     }
-  }, [isOpen, existingContact, isEditing])
+  }, [isOpen, existingContact, isEditing, initialValues])
 
   if (!isOpen) return null
 

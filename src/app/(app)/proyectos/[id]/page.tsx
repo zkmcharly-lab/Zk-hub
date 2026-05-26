@@ -6,7 +6,7 @@ import {
   useProyecto, useAvanzarFase, useUpdateTarea, useCreateTarea,
   useUpdateProyecto, useDeleteProyecto, useDeleteTarea,
   useToggleFase, useSubtareas, useCreateSubtarea, useToggleSubtarea, useDeleteSubtarea,
-  useProyectoNotas, useCreateNota,
+  useProyectoNotas, useCreateNota, useUpdateNota, useDeleteNota,
   type ProyectoFase, type ProyectoTarea, type ProyectoSubtarea
 } from '@/hooks/use-proyectos'
 import { ArrowLeft, CheckCircle2, Circle, Loader2, Plus, Calendar, Trash2, Pencil, X, ChevronDown, ChevronRight } from 'lucide-react'
@@ -15,29 +15,31 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { MantenimientoSetupModal } from '@/components/proyectos/mantenimiento-setup-modal'
 import { ProjectEditModal } from '@/components/proyectos/project-edit-modal'
 import { createClient } from '@/lib/supabase/client'
+import { SmartText } from '@/components/ui/smart-text'
+import { DocumentManager } from '@/components/ui/document-manager'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const AVATARS: Record<string, { initials: string; bg: string; name: string }> = {
   charly: { initials: 'CH', bg: '#2563EB', name: 'Charly' },
   inma:   { initials: 'IN', bg: '#EC4899', name: 'Inma' },
-  fabri:  { initials: 'FA', bg: '#16A34A', name: 'Fabri' },
-  gabi:   { initials: 'GA', bg: '#D97706', name: 'Gabi' },
+  fabri:  { initials: 'FA', bg: '#10B981', name: 'Fabri' },
+  gabi:   { initials: 'GA', bg: '#FBBF24', name: 'Gaby' },
   global: { initials: 'GL', bg: '#6B7280', name: 'Global' },
 }
 
 const TASK_COLORS: Record<string, { border: string; bg: string }> = {
   charly: { border: '#2563EB', bg: 'rgba(37,99,235,0.05)' },
   inma:   { border: '#EC4899', bg: 'rgba(236,72,153,0.05)' },
-  fabri:  { border: '#16A34A', bg: 'rgba(22,163,74,0.05)' },
-  gabi:   { border: '#D97706', bg: 'rgba(217,119,6,0.05)' },
+  fabri:  { border: '#10B981', bg: 'rgba(16,185,129,0.05)' },
+  gabi:   { border: '#FBBF24', bg: 'rgba(251,191,36,0.05)' },
   global: { border: 'transparent', bg: '#F9FAFB' },
 }
 
 const NOTA_COLORS: Record<string, string> = {
   charly: '#2563EB',
   inma:   '#EC4899',
-  fabri:  '#16A34A',
-  gabi:   '#D97706',
+  fabri:  '#10B981',
+  gabi:   '#FBBF24',
 }
 
 // ── SubtareasPanel ─────────────────────────────────────────────────────────────
@@ -62,22 +64,15 @@ function SubtareasPanel({ tarea }: { tarea: ProyectoTarea }) {
 
   const handleSaveEdit = (subId: string) => {
     if (!editTexto.trim()) return
-    // Since we're treating them as notes, we just need to update the description.
-    // We can use the toggleSubtarea mutation or we need a useUpdateSubtarea mutation.
-    // Wait, useToggleSubtarea only updates 'estado'. 
-    // We don't have an update mutation for subtasks description in use-proyectos.ts yet.
-    // Let's create an inline update using supabase client.
     const runUpdate = async () => {
       const supabase = createClient()
       await supabase.from('proyecto_subtareas').update({ descripcion: editTexto.trim() }).eq('id', subId)
-      // trigger refetch by dispatching or just relying on window focus, actually we can just manually update the cache or reload
       window.dispatchEvent(new Event('refetch-subtareas'))
       setEditingId(null)
     }
     runUpdate()
   }
 
-  // To trigger refetch when inline editing finishes
   const queryClient = useQueryClient()
   useEffect(() => {
     const handleRefetch = () => queryClient.invalidateQueries({ queryKey: ['subtareas', tarea.id] })
@@ -115,14 +110,14 @@ function SubtareasPanel({ tarea }: { tarea: ProyectoTarea }) {
                 className="flex-1 flex flex-col cursor-text min-w-0" 
                 onClick={() => { setEditingId(sub.id); setEditTexto(sub.descripcion) }}
               >
-                <span className="text-[12px] text-gray-700 break-words whitespace-pre-wrap leading-relaxed pr-6">
-                  {sub.descripcion}
-                </span>
+                <SmartText
+                  text={sub.descripcion}
+                  className="text-[12px] text-gray-700 break-words whitespace-pre-wrap leading-relaxed pr-6"
+                />
                 <span className="text-[10px] text-gray-400 mt-0.5">Nota agregada</span>
               </div>
             )}
 
-            {/* Buttons (absolutely positioned so they don't get pushed by text) */}
             {editingId !== sub.id && (
               <div className="absolute top-1 right-0 opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1 bg-[#F9FAFB] pl-2">
                 <button
@@ -232,7 +227,6 @@ function TareaRow({ tarea }: { tarea: ProyectoTarea }) {
         className="flex items-center gap-2.5 p-2.5 cursor-pointer group relative"
         onClick={() => setExpanded(prev => !prev)}
       >
-        {/* Checkbox */}
         <div onClick={e => e.stopPropagation()}>
           <input
             type="checkbox"
@@ -245,26 +239,22 @@ function TareaRow({ tarea }: { tarea: ProyectoTarea }) {
           />
         </div>
 
-        {/* Expand icon */}
         <span className="text-gray-300 shrink-0">
           {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         </span>
 
-        {/* Description */}
         <p className={`text-[13px] font-medium flex-1 ${tarea.estado === 'completada' ? 'line-through text-gray-400' : 'text-gray-700'}`}>
           {tarea.descripcion}
         </p>
 
-        {/* Avatar */}
         <div
           className="w-6 h-6 rounded-full flex shrink-0 items-center justify-center text-[9px] font-bold text-white shadow-sm"
-          style={{ backgroundColor: asignadoObj.bg }}
+          style={{ backgroundColor: asignadoObj.bg, color: asignadoObj.name === 'Gaby' ? '#0F172A' : 'white' }}
           title={asignadoObj.name}
         >
           {asignadoObj.initials}
         </div>
 
-        {/* Edit / Delete */}
         <div
           className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5"
           onClick={e => e.stopPropagation()}
@@ -290,7 +280,6 @@ function TareaRow({ tarea }: { tarea: ProyectoTarea }) {
         </div>
       </div>
 
-      {/* Subtareas expandidas */}
       {expanded && <SubtareasPanel tarea={tarea} />}
     </div>
   )
@@ -300,9 +289,14 @@ function TareaRow({ tarea }: { tarea: ProyectoTarea }) {
 function NotasPanel({ proyectoId }: { proyectoId: string }) {
   const { data: notas = [], isLoading } = useProyectoNotas(proyectoId)
   const createNota = useCreateNota()
+  const updateNota = useUpdateNota()
+  const deleteNota = useDeleteNota()
   const [showing, setShowing] = useState(false)
   const [autor, setAutor] = useState<'charly' | 'inma' | 'fabri' | 'gabi'>('charly')
   const [contenido, setContenido] = useState('')
+
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editContenido, setEditContenido] = useState('')
 
   const handleCreate = () => {
     if (!contenido.trim()) return
@@ -327,15 +321,14 @@ function NotasPanel({ proyectoId }: { proyectoId: string }) {
         </button>
       </div>
 
-      {/* Form nueva nota */}
       {showing && (
         <div className="mb-4 rounded-[10px] border border-gray-200 bg-gray-50 p-3 space-y-2">
           <div className="flex items-center gap-2">
             <div
               className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-sm shrink-0"
-              style={{ backgroundColor: NOTA_COLORS[autor] }}
+              style={{ backgroundColor: NOTA_COLORS[autor], color: autor === 'gabi' ? '#0F172A' : 'white' }}
             >
-              {AVATARS[autor].initials}
+              {AVATARS[autor]?.initials}
             </div>
             <select
               value={autor}
@@ -369,7 +362,6 @@ function NotasPanel({ proyectoId }: { proyectoId: string }) {
         </div>
       )}
 
-      {/* Lista de notas */}
       {isLoading ? (
         <p className="text-[12px] text-gray-400">Cargando notas...</p>
       ) : notas.length === 0 ? (
@@ -377,11 +369,11 @@ function NotasPanel({ proyectoId }: { proyectoId: string }) {
       ) : (
         <div className="space-y-4">
           {notas.map(nota => (
-            <div key={nota.id} className="space-y-1">
+            <div key={nota.id} className="space-y-1 group relative">
               <div className="flex items-center gap-2">
                 <div
                   className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-sm shrink-0"
-                  style={{ backgroundColor: NOTA_COLORS[nota.autor] }}
+                  style={{ backgroundColor: NOTA_COLORS[nota.autor], color: nota.autor === 'gabi' ? '#0F172A' : 'white' }}
                 >
                   {AVATARS[nota.autor]?.initials ?? nota.autor.substring(0, 2).toUpperCase()}
                 </div>
@@ -389,8 +381,33 @@ function NotasPanel({ proyectoId }: { proyectoId: string }) {
                   {AVATARS[nota.autor]?.name ?? nota.autor}
                   <span className="font-normal text-gray-400 ml-1.5">· {formatNotaDate(nota.created_at)}</span>
                 </p>
+                
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 ml-auto">
+                  <button onClick={() => { setEditingId(nota.id); setEditContenido(nota.contenido) }} className="text-gray-400 hover:text-gray-700 p-1"><Pencil size={12} /></button>
+                  <button onClick={() => { if(window.confirm('¿Borrar esta nota?')) deleteNota.mutate(nota.id) }} className="text-gray-400 hover:text-red-500 p-1"><Trash2 size={12} /></button>
+                </div>
               </div>
-              <p className="text-[13px] text-gray-700 leading-relaxed pl-8 whitespace-pre-wrap">{nota.contenido}</p>
+              
+              {editingId === nota.id ? (
+                <div className="pl-8 pr-2 pb-2">
+                  <textarea
+                    autoFocus
+                    className="w-full text-[13px] text-gray-700 bg-white border border-gray-200 rounded-[8px] p-2 resize-none focus:outline-none focus:border-gray-400 min-h-[60px]"
+                    value={editContenido}
+                    onChange={e => setEditContenido(e.target.value)}
+                    onKeyDown={e => { if(e.key === 'Escape') setEditingId(null) }}
+                  />
+                  <div className="flex gap-2 justify-end mt-1">
+                    <button onClick={() => setEditingId(null)} className="text-[11px] text-gray-500 hover:text-gray-700">Cancelar</button>
+                    <button onClick={() => { if(editContenido.trim()) { updateNota.mutate({ id: nota.id, contenido: editContenido.trim() }); setEditingId(null); } }} className="text-[11px] bg-[#E8193C] text-white px-2 py-1 rounded font-bold">Guardar</button>
+                  </div>
+                </div>
+              ) : (
+                <SmartText
+                  text={nota.contenido}
+                  className="text-[13px] text-gray-700 leading-relaxed pl-8 whitespace-pre-wrap block"
+                />
+              )}
               <div className="border-b border-gray-100 pt-1 ml-8" />
             </div>
           ))}
@@ -399,6 +416,7 @@ function NotasPanel({ proyectoId }: { proyectoId: string }) {
     </div>
   )
 }
+
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ProyectoDetailPage() {
@@ -804,6 +822,15 @@ export default function ProyectoDetailPage() {
 
             {/* Notas del equipo */}
             <NotasPanel proyectoId={proyectoId} />
+
+            {/* Documentos del Proyecto */}
+            {proyecto.contact_id && (
+              <DocumentManager
+                clienteId={proyecto.contact_id}
+                proyectoId={proyecto.id}
+                pathType="project"
+              />
+            )}
 
             {/* Mantenimiento (Fase 5+) */}
             {proyecto.fase_actual >= 5 && (

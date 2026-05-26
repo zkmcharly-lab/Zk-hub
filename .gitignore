@@ -32,3 +32,5 @@ SPEC-CC-*.md
 check_db*.js
 check_tables.mjs
 convert_sql.js
+tsconfig.tsbuildinfo
+

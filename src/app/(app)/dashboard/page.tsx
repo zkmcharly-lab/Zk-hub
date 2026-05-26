@@ -29,14 +29,7 @@ import { useExchangeRates } from "@/hooks/use-exchange-rates";
 const ZK_RED = "#E8193C";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function formatMonto(monto: number, moneda: string) {
-  const code = moneda || 'USD';
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: code,
-    minimumFractionDigits: 0
-  }).format(monto)
-}
+// Removed formatMonto since we use the global formatCurrency
 
 function greeting(nombre: string) {
   const h = new Date().getHours();
@@ -287,11 +280,11 @@ export default function DashboardPage() {
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <span style={{ fontSize: 24, fontWeight: 700, color: "var(--zk-text-primary)", lineHeight: 1 }}>
-                        {formatMonto(main[1], main[0])} {main[0]}
+                        {formatCurrency(main[1], main[0])} {main[0]}
                       </span>
                       {rest.length > 0 && (
                         <span style={{ fontSize: 13, color: 'var(--zk-text-muted)', fontWeight: 500 }}>
-                          {rest.map(r => `${formatMonto(r[1], r[0])} ${r[0]}`).join('  ·  ')}
+                          {rest.map(r => `${formatCurrency(r[1], r[0])} ${r[0]}`).join('  ·  ')}
                         </span>
                       )}
                     </div>

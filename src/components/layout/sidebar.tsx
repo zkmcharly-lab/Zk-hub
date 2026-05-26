@@ -3,7 +3,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   LayoutDashboard, Users, TrendingUp, CreditCard, FolderKanban,
-  Calendar, MessageSquare, Settings, LogOut, ChevronDown,
+  Calendar, MessageSquare, Settings, LogOut, ChevronDown, Globe2, BookOpen
 } from 'lucide-react'
 import { useAuthStore, useWorkspaceStore } from '@/lib/store'
 import { createClient } from '@/lib/supabase/client'
@@ -14,12 +14,15 @@ const NAV_MAIN = [
   { label: 'Contactos', icon: Users, href: '/contacts' },
   { label: 'Pipeline', icon: TrendingUp, href: '/pipeline' },
   { label: 'Cobros', icon: CreditCard, href: '/cobros' },
+  { label: 'Finanzas', icon: CreditCard, href: '/finanzas' },
   { label: 'Proyectos', icon: FolderKanban, href: '/proyectos' },
 ]
 
 const NAV_TOOLS = [
   { label: 'Calendario', icon: Calendar, href: '/calendar' },
   { label: 'Conversaciones', icon: MessageSquare, href: '/conversations' },
+  { label: 'Scraper B2B', icon: Globe2, href: '/herramientas/scraper' },
+  { label: 'Knowledge Base', icon: BookOpen, href: '/herramientas/knowledge' },
 ]
 
 const NAV_TEAM = [

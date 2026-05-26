@@ -8,6 +8,7 @@ import { useContactNotes, useAddContactNote, useDeleteContactNote } from '@/hook
 import { useReminders, useCreateReminder, useUpdateReminder, useDeleteReminder } from '@/hooks/use-reminders'
 import { useAuthStore } from '@/lib/store'
 import { formatCurrency, avatarColor, initials, relativeTime } from '@/lib/utils'
+import { DocumentManager } from '@/components/ui/document-manager'
 import { COUNTRY_LIST } from '@/utils/locations'
 import { X, Pencil, Loader2, Mail, Phone, Building2, Calendar, Trash2, Plus, SendHorizonal, MessageSquare, MapPin, ExternalLink, Globe, TrendingUp, Bell, CheckCircle2, Circle, BadgeCheck } from 'lucide-react'
 
@@ -556,6 +557,14 @@ export function ContactPanel({ contactId, onClose, onEdit, onAddDeal, isNewConta
                 </div>
               )}
             </section>
+
+            <Divider />
+
+            {/* Documentos Globales del Cliente */}
+            <DocumentManager
+              clienteId={contactId}
+              pathType="global"
+            />
 
           </div>
 

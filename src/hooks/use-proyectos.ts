@@ -486,3 +486,34 @@ export function useCreateNota() {
   })
 }
 
+
+export function useUpdateNota() {
+  const supabase = createClient()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, contenido }: { id: string; contenido: string }) => {
+      const { error } = await supabase.from('proyecto_notas').update({ contenido }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proyecto_notas'] })
+    },
+  })
+}
+
+export function useDeleteNota() {
+  const supabase = createClient()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('proyecto_notas').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['proyecto_notas'] })
+    },
+  })
+}
+
